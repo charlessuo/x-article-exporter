@@ -77,6 +77,13 @@ func groupBlocks(blocks []model.Block) []renderGroup {
 			}
 			groups = append(groups, renderGroup{Tag: "pre", Blocks: blocks[i:j]})
 			i = j
+		case "blockquote":
+			j := i
+			for j < len(blocks) && blocks[j].Type == "blockquote" {
+				j++
+			}
+			groups = append(groups, renderGroup{Tag: "blockquote", Blocks: blocks[i:j]})
+			i = j
 		default:
 			groups = append(groups, renderGroup{Blocks: blocks[i : i+1]})
 			i++
@@ -89,6 +96,10 @@ func groupBlocks(blocks []model.Block) []renderGroup {
 // Used as a template function.
 func renderBlock(block model.Block, entityMap map[string]model.Entity) template.HTML {
 	text := renderStyledText(block, entityMap)
+
+	// Convert newlines within a single block's text to <br> tags.
+	// Draft.js blocks can contain \n\n for paragraph breaks within one block.
+	text = strings.ReplaceAll(text, "\n", "<br>\n")
 
 	switch block.Type {
 	case "unstyled":
@@ -109,7 +120,8 @@ func renderBlock(block model.Block, entityMap map[string]model.Entity) template.
 	case "header-six":
 		return template.HTML("<h6>" + text + "</h6>")
 	case "blockquote":
-		return template.HTML("<blockquote><p>" + text + "</p></blockquote>")
+		// Blockquotes are wrapped by the template; return just the content.
+		return template.HTML(text)
 	case "atomic":
 		return renderAtomic(block, entityMap)
 	case "unordered-list-item", "ordered-list-item":
@@ -213,6 +225,12 @@ const articleTemplate = `<!DOCTYPE html>
     </ol>
     {{- else if eq .Tag "pre"}}
     <pre><code>{{joinCodeLines .Blocks}}</code></pre>
+    {{- else if eq .Tag "blockquote"}}
+    <blockquote>
+      {{- range .Blocks}}
+      <p>{{renderBlock . $.EntityMap}}</p>
+      {{- end}}
+    </blockquote>
     {{- else}}
     {{- range .Blocks}}
     {{renderBlock . $.EntityMap}}

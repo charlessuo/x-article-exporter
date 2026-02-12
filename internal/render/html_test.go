@@ -111,6 +111,22 @@ func TestGroupBlocks(t *testing.T) {
 				{Tag: "ol", Blocks: []model.Block{{Type: "ordered-list-item", Text: "Number"}}},
 			},
 		},
+		{
+			name: "consecutive blockquotes grouped",
+			blocks: []model.Block{
+				{Type: "blockquote", Text: "First quote"},
+				{Type: "blockquote", Text: "Second quote"},
+			},
+			want: []renderGroup{
+				{
+					Tag: "blockquote",
+					Blocks: []model.Block{
+						{Type: "blockquote", Text: "First quote"},
+						{Type: "blockquote", Text: "Second quote"},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -171,7 +187,8 @@ func TestRenderHTML(t *testing.T) {
 		{"unordered list close", "</ul>"},
 		{"pre/code block", "<pre><code>"},
 		{"code content joined", "fmt.Println(&#34;hello&#34;)\nfmt.Println(&#34;world&#34;)"},
-		{"blockquote", "<blockquote><p>A wise quote.</p></blockquote>"},
+		{"blockquote", "<blockquote>"},
+		{"blockquote content", "<p>A wise quote.</p>"},
 		{"css styles", "font-family: Georgia"},
 	}
 
@@ -249,6 +266,48 @@ func TestRenderHTMLEmptyUnstyled(t *testing.T) {
 
 	if !strings.Contains(got, "<br>") {
 		t.Error("empty unstyled block should render as <br>")
+	}
+}
+
+func TestRenderHTMLNewlinesInBlock(t *testing.T) {
+	article := &model.Article{
+		Title:       "Newline Test",
+		PublishedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Blocks: []model.Block{
+			{Type: "unstyled", Text: "First paragraph.\n\nSecond paragraph."},
+		},
+		EntityMap: map[string]model.Entity{},
+	}
+
+	got := RenderHTML(article)
+
+	if !strings.Contains(got, "First paragraph.<br>") {
+		t.Error("newlines within block should be converted to <br>")
+	}
+}
+
+func TestRenderHTMLBlockquoteGrouping(t *testing.T) {
+	article := &model.Article{
+		Title:       "Blockquote Test",
+		PublishedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Blocks: []model.Block{
+			{Type: "blockquote", Text: "First quote"},
+			{Type: "blockquote", Text: "Second quote"},
+		},
+		EntityMap: map[string]model.Entity{},
+	}
+
+	got := RenderHTML(article)
+
+	// Should have a single <blockquote> with two <p> elements.
+	if count := strings.Count(got, "<blockquote>"); count != 1 {
+		t.Errorf("expected 1 <blockquote>, got %d", count)
+	}
+	if !strings.Contains(got, "<p>First quote</p>") {
+		t.Error("missing first quote paragraph")
+	}
+	if !strings.Contains(got, "<p>Second quote</p>") {
+		t.Error("missing second quote paragraph")
 	}
 }
 
