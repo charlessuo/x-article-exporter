@@ -40,7 +40,7 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | N3 | P2 | extract | `resolveQueryID(config)` — check S2 cache (24h TTL); if miss → N4; if `--query-id` flag → use directly | call | → N4 (cache miss) | → N5 |
 | N4 | P3 | extract | `fetchQueryIDFromBundle()` — GET main.js → find api chunk URL → GET `api.{hash}.js` → regex extract query ID | call | — | → S2, → N3 |
 | N5 | P2 | extract | `fetchArticle(articleID, queryID, config)` — build GET with URL-encoded `variables`, `features` (23 flags), `fieldToggles` (`withArticleRichContentState: true`), bearer token, cookie auth | call | → N14 | → N6 |
-| N6 | P2 | extract | `parseArticle(response)` — parse JSON envelope → article metadata (title, author, date) + Draft.js `RawDraftContentState` (blocks array, inline styles, entity map) | call | — | → S3 |
+| N6 | P2 | extract | `parseArticle(response)` — parse JSON envelope (`data.tweetResult.result.article.article_results.result`) → article metadata (title, date, author from tweet wrapper) + Draft.js `content_state` (blocks array, inline styles, entity map as `{key, value}` pairs) | call | — | → S3 |
 | N7 | P2 | extract | `downloadImages(blocks)` — fetch image URLs from entity map, base64-encode, embed inline in block model | call | — | updates S3 |
 | N8 | P2 | translate | `translateBlocks(blocks, targetLang, apiKey)` — XML-wrap translatable blocks, set `ignore_tags` for code/LaTeX, single POST to DeepL, unwrap response, merge back | call | → N15 | updates S3 |
 | N9 | P2 | translate | `validateTranslation(original, translated)` — block count match, code block byte-identity (`bytes.Equal`), translation length ratio ±30% | call | — | → U3 (soft), → U4 (hard) |
@@ -48,7 +48,7 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | N11 | P2 | render | `printToPDF(html)` — `chromedp.NewContext()`, `page.SetDocumentContent(html)`, `page.PrintToPDF()` with `WithDisplayHeaderFooter`, `WithFooterTemplate` (page numbers), `WithPrintBackground`, margins | call | → N16 | → N12 |
 | N12 | P2 | validate | `validatePDF(pdfBytes, article, blocks)` — `pdfcpu.ValidateFile()` (~5ms), `PageCountFile()` > 0, `ExtractImagesRaw()` count matches expected, `ledongthuc/pdf.GetPlainText()` for title/author present + word count ±15% | call | — | → U3 (soft), → U4 (hard), → N13 (pass) |
 | N13 | P6 | output | `writePDF(pdfBytes, outputPath)` — `os.WriteFile(path, pdfBytes, 0644)` | call | writes to P6 | → U5 |
-| N14 | P3 | — | `GET /graphql/{queryId}/TwitterArticleByRestId` — `authorization: Bearer {token}`, `x-csrf-token: {ct0}`, `cookie: auth_token={auth_token}; ct0={ct0}` | call | — | → N5 |
+| N14 | P3 | — | `GET /graphql/{queryId}/TweetResultByRestId` — `authorization: Bearer {token}`, `x-csrf-token: {ct0}`, `cookie: auth_token={auth_token}; ct0={ct0}` | call | — | → N5 |
 | N15 | P4 | — | `POST /v2/translate` — `text`, `target_lang`, `tag_handling: xml`, `ignore_tags: code,latex` | call | — | → N8 |
 | N16 | P5 | — | `page.PrintToPDF()` — Chrome DevTools Protocol via chromedp Go library | call | — | → N11 |
 
@@ -111,7 +111,7 @@ flowchart TB
     S2["S2: queryIDCache"]
 
     subgraph P3["P3: X API"]
-        N14["N14: GET TwitterArticleByRestId"]
+        N14["N14: GET TweetResultByRestId"]
     end
 
     subgraph P4["P4: DeepL API"]
