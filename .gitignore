@@ -1,0 +1,15 @@
+# Binary
+x-article-exporter
+
+# Cache
+.cache/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
