@@ -8,11 +8,13 @@ import (
 
 // Config holds the CLI configuration for a single export run.
 type Config struct {
-	URL       string
-	AuthToken string
-	CT0       string
-	QueryID   string
-	Output    string
+	URL         string
+	AuthToken   string
+	CT0         string
+	QueryID     string
+	Output      string
+	TranslateTo string
+	OllamaModel string
 }
 
 // ParseFlags parses CLI arguments into a Config.
@@ -25,6 +27,8 @@ func ParseFlags(args []string) (*Config, error) {
 	fs.StringVar(&cfg.CT0, "ct0", "", "X ct0 cookie value (required)")
 	fs.StringVar(&cfg.QueryID, "query-id", "", "GraphQL query ID override (optional)")
 	fs.StringVar(&cfg.Output, "output", "", "output PDF path (default: ./{title}.pdf)")
+	fs.StringVar(&cfg.TranslateTo, "translate", "", "translate article to target language (e.g., de, fr)")
+	fs.StringVar(&cfg.OllamaModel, "ollama-model", "", "Ollama model for translation (default: translategemma:12b)")
 
 	if err := fs.Parse(args); err != nil {
 		return nil, err

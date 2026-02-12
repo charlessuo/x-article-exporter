@@ -12,6 +12,7 @@ import (
 	"github.com/annismckenzie/x-article-exporter/internal/extract"
 	"github.com/annismckenzie/x-article-exporter/internal/images"
 	"github.com/annismckenzie/x-article-exporter/internal/render"
+	"github.com/annismckenzie/x-article-exporter/internal/translate"
 )
 
 func main() {
@@ -50,6 +51,17 @@ func run(args []string) error {
 
 	if len(article.Blocks) == 0 {
 		fmt.Fprintln(os.Stderr, "warning: article has no content blocks (content_state may be empty)")
+	}
+
+	if cfg.TranslateTo != "" {
+		client := translate.NewClient("", cfg.OllamaModel)
+		if err := client.Ping(ctx); err != nil {
+			return err
+		}
+		log.Printf("Translating to %s...", cfg.TranslateTo)
+		if err := translate.TranslateArticle(ctx, article, cfg.TranslateTo, client); err != nil {
+			return err
+		}
 	}
 
 	log.Println("Downloading images...")
