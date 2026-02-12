@@ -49,14 +49,20 @@ type tweetResult struct {
 }
 
 type articleResult struct {
-	RestID       string        `json:"rest_id"`
-	ID           string        `json:"id"`
-	Title        string        `json:"title"`
-	PreviewText  string        `json:"preview_text"`
-	CoverMedia   *coverMedia   `json:"cover_media"`
-	ContentState json.RawMessage `json:"content_state"`
-	Metadata     *articleMeta    `json:"metadata"`
-	LifecycleState *lifecycleState `json:"lifecycle_state"`
+	RestID         string                `json:"rest_id"`
+	ID             string                `json:"id"`
+	Title          string                `json:"title"`
+	PreviewText    string                `json:"preview_text"`
+	CoverMedia     *coverMedia           `json:"cover_media"`
+	ContentState   json.RawMessage       `json:"content_state"`
+	Metadata       *articleMeta          `json:"metadata"`
+	LifecycleState *lifecycleState       `json:"lifecycle_state"`
+	MediaEntities  []articleMediaEntity  `json:"media_entities"`
+}
+
+type articleMediaEntity struct {
+	MediaID   string     `json:"media_id"`
+	MediaInfo *mediaInfo `json:"media_info"`
 }
 
 type coverMedia struct {
@@ -190,6 +196,9 @@ func ParseArticle(data []byte) (*model.Article, error) {
 		}
 	}
 
+	// Resolve MEDIA entity image URLs from the separate media_entities array.
+	resolveMediaURLs(article, artResult.MediaEntities)
+
 	return article, nil
 }
 
@@ -265,4 +274,44 @@ func parseEntityMap(raw json.RawMessage, article *model.Article) error {
 		}
 	}
 	return nil
+}
+
+// resolveMediaURLs matches MEDIA entities (which contain mediaItems[].mediaId)
+// against the article-level media_entities array to populate Data["src"] with
+// the actual image URL.
+func resolveMediaURLs(article *model.Article, mediaEntities []articleMediaEntity) {
+	if len(mediaEntities) == 0 {
+		return
+	}
+
+	// Build lookup: mediaId → image URL
+	urlByMediaID := make(map[string]string, len(mediaEntities))
+	for _, me := range mediaEntities {
+		if me.MediaInfo != nil && me.MediaInfo.OriginalImgURL != "" {
+			urlByMediaID[me.MediaID] = me.MediaInfo.OriginalImgURL
+		}
+	}
+
+	for key, entity := range article.EntityMap {
+		if entity.Type != "MEDIA" {
+			continue
+		}
+		// Data["mediaItems"] is []any where each item is map[string]any with "mediaId".
+		items, ok := entity.Data["mediaItems"].([]any)
+		if !ok || len(items) == 0 {
+			continue
+		}
+		firstItem, ok := items[0].(map[string]any)
+		if !ok {
+			continue
+		}
+		mediaID, ok := firstItem["mediaId"].(string)
+		if !ok {
+			continue
+		}
+		if url, found := urlByMediaID[mediaID]; found {
+			entity.Data["src"] = url
+			article.EntityMap[key] = entity
+		}
+	}
 }
