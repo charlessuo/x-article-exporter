@@ -39,7 +39,7 @@
 
 | Part   | Mechanism                                                                                                                                                                                                                                                                                                                                                                                                                   | Flag  |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: |
-| **A1** | **Content extraction** — `GET x.com/i/api/graphql/{queryId}/TwitterArticleByRestId` with cookie auth (`auth_token` + `ct0`), hardcoded bearer token, feature flags, and `fieldToggles.withArticleRichContentState: true`. Response is Draft.js `RawDraftContentState` (blocks with types, inline styles, entity map). Query IDs: dynamic extraction from webpack `api` chunk with 24h cache + manual `--query-id` fallback. |       |
+| **A1** | **Content extraction** — `GET x.com/i/api/graphql/{queryId}/TweetResultByRestId` with cookie auth (`auth_token` + `ct0`), hardcoded bearer token, feature flags, and `fieldToggles.withArticleRichContentState: true`. Articles are fetched as tweets — the article URL's snowflake ID is a tweet ID. Response is Draft.js `RawDraftContentState` in `content_state` field (blocks with types, inline styles, entity map as array of `{key, value}` pairs). Query IDs: dynamic extraction from webpack `api` chunk with 24h cache + manual `--query-id` fallback. |       |
 | **A2** | **Translation** — Send all translatable blocks as a single XML-tagged document to DeepL API (`/v2/translate`) with `tag_handling: "xml"`. Use `ignore_tags` for code blocks and LaTeX. Thin Go HTTP client (~100 LOC). Free tier: 500K chars/month ≈ 16 articles. Pro: ~$0.75/article.                                                                                                                                      |       |
 | **A3** | **PDF rendering** — Render blocks to HTML via Go template + CSS, use `chromedp` (headless Chrome) to `PrintToPDF`. Full CSS print media control (page breaks, headers/footers with page numbers). Images base64-encoded inline. ~250 LOC total (template + CSS + render). Requires Chrome/Chromium installed.                                                                                                               |       |
 | **A4** | **Quality pipeline** — Two-tier validation. Per-export (<200ms): `pdfcpu.ValidateFile()`, page count, image count match, title/author present, word count ±15%. CI: golden metadata snapshots, must-contain phrases, empty page detection. Libraries: `pdfcpu` + `ledongthuc/pdf` (both pure Go).                                                                                                                           |       |
@@ -51,7 +51,7 @@ See [spike-a1-content-extraction.md](./spike-a1-content-extraction.md).
 **Key findings:**
 - X articles are 100% client-side rendered — no content in HTML
 - Internal GraphQL API is the only path to article content
-- `ArticleEntityResultByRestId` endpoint fetches a single article by snowflake ID
+- `TweetResultByRestId` endpoint fetches article content via the parent tweet's snowflake ID
 - Cookie-based auth (`auth_token` + `ct0`) is the only reliable auth method
 - Article content is block-based rich text (headings, paragraphs, lists, code, quotes, LaTeX, media, embedded tweets)
 - Query IDs rotate every 2-4 weeks — must be extracted from JS bundles
@@ -59,11 +59,11 @@ See [spike-a1-content-extraction.md](./spike-a1-content-extraction.md).
 - GraphQL preferred over headless browser: faster, structured data, better for translation + validation
 
 **A1 deep dive completed** — see [spike-a1-deep-dive.md](./spike-a1-deep-dive.md) for resolution of three unknowns:
-- **Response format**: Operation is `TwitterArticleByRestId` (not `ArticleEntityResultByRestId`). Metadata envelope is documented. Body content is Draft.js `RawDraftContentState` format, unlocked via `fieldToggles.withArticleRichContentState: true`.
+- **Response format**: Operation is `TweetResultByRestId` — articles are fetched as tweets. Response path: `data.tweetResult.result.article.article_results.result`. Body content is Draft.js `RawDraftContentState` in `content_state` field, unlocked via `fieldToggles.withArticleRichContentState: true`. Entity map is an array of `{key, value}` pairs. Author info from tweet wrapper.
 - **Query ID extraction**: IDs are in webpack `api` chunk. All major scrapers hardcode them. Regex extraction from JS bundle is feasible. Recommended: dynamic extraction with 24h cache + manual fallback.
 - **Request format**: GET request with URL-encoded `variables`, `features`, `fieldToggles` params. Bearer token, headers, cookie format, and feature flags are fully documented.
 
-**A1 remaining risk**: The exact field name for article body content in the response and the precise entity types for embedded tweets need verification via a real API call. A single manual test with browser dev tools resolves all remaining uncertainties.
+**A1 status**: All unknowns resolved by V1 implementation. Content field is `content_state`, entity types include `MEDIA` (not `IMAGE`), `LINK`, `TWEMOJI`, `MARKDOWN`. Entity map is an array format. Author info from tweet wrapper. Query IDs rotate every 2-4 weeks (currently `d6YKjvQ920F-D4Y1PruO-A`).
 
 ### Spike results for A2
 
@@ -123,14 +123,14 @@ See [spike-a4-quality-pipeline.md](./spike-a4-quality-pipeline.md).
 
 **Notes:**
 - R0 ✅: A1 (GraphQL extraction → Draft.js blocks) + A3 (chromedp HTML→PDF) form the complete pipeline
-- R1 ✅: `TwitterArticleByRestId` with `withArticleRichContentState: true` returns full content as Draft.js blocks (title, body, images, entities)
+- R1 ✅: `TweetResultByRestId` with `withArticleRichContentState: true` returns full content as Draft.js blocks in `content_state` field (title, body, images, entities)
 - R2 ✅: DeepL API with XML tag handling, `ignore_tags` for code/LaTeX, full-document translation
 - R3 ✅: chromedp `PrintToPDF` produces self-contained PDF with base64-embedded images
 - R4 ✅: Two-tier validation pipeline with `pdfcpu` + `ledongthuc/pdf`, <200ms per-export overhead
 - R5 ✅: Config file (`~/.config/x-article-exporter/config.yaml`) for `auth_token` + `ct0`, CLI flags as override. Bearer token is hardcoded (same for all users).
 - R6 ✅: `--translate <lang>` flag maps directly to DeepL's `target_lang` parameter
 
-**Remaining risk (low):** Exact field name for body content and entity types for embedded tweets need one manual verification via browser dev tools. All other request/response details are confirmed from multiple sources.
+**Remaining risk (low):** Query IDs rotate every 2-4 weeks and must be updated. All request/response details are verified by V1 implementation.
 
 ---
 
