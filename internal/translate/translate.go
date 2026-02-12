@@ -49,6 +49,10 @@ func TranslateArticle(ctx context.Context, article *model.Article, targetLang st
 		if err != nil {
 			return fmt.Errorf("translating title: %w", err)
 		}
+		// Strip trailing period the model may add if the original didn't have one.
+		if !strings.HasSuffix(strings.TrimSpace(article.Title), ".") {
+			translated = strings.TrimRight(translated, ".")
+		}
 		article.Title = translated
 	}
 
@@ -63,7 +67,7 @@ func TranslateArticle(ctx context.Context, article *model.Article, targetLang st
 
 		texts := make([]string, len(batchIndices))
 		for i, idx := range batchIndices {
-			texts[i] = article.Blocks[idx].Text
+			texts[i] = strings.TrimSpace(article.Blocks[idx].Text)
 		}
 
 		translated, err := translateBatch(ctx, client, texts, targetLang)
@@ -119,11 +123,11 @@ func buildSinglePrompt(text, targetLang string) string {
 func buildBatchPrompt(texts []string, targetLang string) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb,
-		"Translate the following numbered paragraphs to %s. Preserve technical terms, identifiers, proper nouns, and brand names unchanged. Return the translated paragraphs in the exact same numbered format.\n\n",
+		"Translate the following numbered paragraphs to %s. Preserve technical terms, identifiers, proper nouns, and brand names unchanged. Return the translated paragraphs in the exact same [N] numbered format.\n\n",
 		targetLang,
 	)
 	for i, text := range texts {
-		fmt.Fprintf(&sb, "%d. %s\n", i+1, text)
+		fmt.Fprintf(&sb, "[%d] %s\n", i+1, text)
 	}
 	return sb.String()
 }
@@ -180,17 +184,20 @@ func parseBatchResponse(response string, expectedCount int) ([]string, error) {
 	return results, nil
 }
 
-// parseNumberedLine checks if a line starts with "N. " pattern.
+// parseNumberedLine checks if a line starts with "[N] " pattern.
 func parseNumberedLine(line string) (int, string, bool) {
-	i := 0
+	if len(line) < 3 || line[0] != '[' {
+		return 0, "", false
+	}
+	i := 1
 	for i < len(line) && line[i] >= '0' && line[i] <= '9' {
 		i++
 	}
-	if i == 0 || i >= len(line) || line[i] != '.' {
+	if i == 1 || i >= len(line) || line[i] != ']' {
 		return 0, "", false
 	}
 	num := 0
-	for _, c := range line[:i] {
+	for _, c := range line[1:i] {
 		num = num*10 + int(c-'0')
 	}
 	rest := strings.TrimLeft(line[i+1:], " ")
