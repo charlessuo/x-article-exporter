@@ -4,52 +4,57 @@ This document resolves three specific unknowns identified after the A1 spike, pr
 
 ---
 
-## Unknown 1: Exact Response Format of `TwitterArticleByRestId`
+## Unknown 1: Exact Response Format of Article Fetch
 
-### Finding: The operation is called `TwitterArticleByRestId`, not `ArticleEntityResultByRestId`
+### Finding: Articles are fetched as tweets via `TweetResultByRestId`
 
-The A1 spike used the name `ArticleEntityResultByRestId`. Based on the `twitter-api-client` library (trevorhobenshield/twitter-api-client), the actual operation name in X's JS bundles is **`TwitterArticleByRestId`**.
+The A1 spike assumed a dedicated article endpoint (`ArticleEntityResultByRestId`). The deep dive initially identified `TwitterArticleByRestId` from library research (twitter-api-client, fa0311/twitter-openapi). **V1 implementation discovered that articles are actually fetched as tweets via `TweetResultByRestId`** — the article URL's snowflake ID is a tweet ID, and the article content is nested inside the tweet response at `data.tweetResult.result.article.article_results.result`.
 
-**Confidence: HIGH** -- confirmed across multiple sources (twitter-api-client constants.py, fa0311/twitter-openapi spec).
+**Confidence: VERIFIED** — confirmed by successful V1 end-to-end test with real article data.
 
 ### Response envelope structure
 
-The response follows X's standard GraphQL nesting pattern. Based on the fa0311/twitter-openapi OpenAPI 3.0 specification (`src/openapi/schemas/tweet.yaml`), the envelope is:
+The response follows X's standard GraphQL nesting pattern. **V1 update:** The actual response goes through a tweet wrapper. The envelope is:
 
 ```json
 {
   "data": {
-    "article": {
-      "article_results": {
-        "result": {
-          "__typename": "ArticleResult",
-          "rest_id": "1234567890123456789",
-          "id": "<base64-encoded-id>",
-          "title": "Article Title Here",
-          "preview_text": "First ~200 chars of article text...",
-          "cover_media": {
-            "id": "<media-id>",
-            "media_key": "<media-key>",
-            "media_id": "9876543210987654321",
-            "media_info": {
-              "original_img_url": "https://pbs.twimg.com/media/...",
-              "original_img_width": 1200,
-              "original_img_height": 675,
-              "color_info": {
-                "palette": [
-                  {
-                    "rgb": { "red": 42, "green": 99, "blue": 156 },
-                    "percentage": 35.5
-                  }
-                ]
+    "tweetResult": {
+      "result": {
+        "__typename": "Tweet",
+        "rest_id": "1234567890123456789",
+        "core": {
+          "user_results": {
+            "result": {
+              "core": {
+                "name": "Display Name",
+                "screen_name": "username"
               }
             }
-          },
-          "metadata": {
-            "first_published_at_secs": 1700000000
-          },
-          "lifecycle_state": {
-            "modified_at_secs": 1700100000
+          }
+        },
+        "article": {
+          "article_results": {
+            "result": {
+              "rest_id": "1234567890123456789",
+              "id": "<base64-encoded-id>",
+              "title": "Article Title Here",
+              "preview_text": "First ~200 chars of article text...",
+              "cover_media": {
+                "media_info": {
+                  "original_img_url": "https://pbs.twimg.com/media/...",
+                  "original_img_width": 1200,
+                  "original_img_height": 675
+                }
+              },
+              "metadata": {
+                "first_published_at_secs": 1700000000
+              },
+              "lifecycle_state": {
+                "modified_at_secs": 1700100000
+              },
+              "content_state": { "blocks": [], "entityMap": [] }
+            }
           }
         }
       }
@@ -58,7 +63,7 @@ The response follows X's standard GraphQL nesting pattern. Based on the fa0311/t
 }
 ```
 
-**Confidence: HIGH** for the metadata fields above -- these are directly from the fa0311 OpenAPI spec which is auto-generated from X's actual API responses.
+**Confidence: VERIFIED** — confirmed by V1 implementation with real API responses. Note: author info comes from the tweet wrapper (`core.user_results`), not from the article result itself.
 
 ### Article body content: Draft.js `RawDraftContentState`
 
@@ -74,7 +79,7 @@ params = {
 }
 ```
 
-Twitter maintains a fork of Facebook's Draft.js at `github.com/twitter-forks/draft-js` (last updated December 2024). This strongly indicates that article content is stored and served as **Draft.js `RawDraftContentState`** format. The field is likely named `rich_content_state` or similar, returned as a nested object (or JSON string) within the `ArticleResult`.
+Twitter maintains a fork of Facebook's Draft.js at `github.com/twitter-forks/draft-js` (last updated December 2024). Article content is stored and served as **Draft.js `RawDraftContentState`** format. **V1 finding:** The field is named `content_state` (not `rich_content_state`), returned as a nested JSON object within the article result.
 
 The Draft.js raw content state format is:
 
@@ -143,28 +148,32 @@ The Draft.js raw content state format is:
       "data": {}
     }
   ],
-  "entityMap": {
-    "0": {
-      "type": "LINK",
-      "mutability": "MUTABLE",
-      "data": {
-        "url": "https://example.com"
+  "entityMap": [
+    {
+      "key": "0",
+      "value": {
+        "type": "LINK",
+        "mutability": "MUTABLE",
+        "data": {
+          "url": "https://example.com"
+        }
       }
     },
-    "1": {
-      "type": "IMAGE",
-      "mutability": "IMMUTABLE",
-      "data": {
-        "src": "https://pbs.twimg.com/media/...",
-        "width": 800,
-        "height": 600
+    {
+      "key": "1",
+      "value": {
+        "type": "MEDIA",
+        "mutability": "Immutable",
+        "data": {
+          "src": "https://pbs.twimg.com/media/..."
+        }
       }
     }
-  }
+  ]
 }
 ```
 
-**Confidence: MEDIUM-HIGH.** The Draft.js format is confirmed by Twitter's fork. The exact field name in the response (`rich_content_state` vs `content_state` vs something else) needs verification by making an actual API call.
+**Confidence: VERIFIED.** The Draft.js format is confirmed by Twitter's fork and by V1 implementation. The field name is `content_state`. **V1 finding:** The `entityMap` in the `TweetResultByRestId` response is an **array of `{key, value}` pairs** (not a map as in standard Draft.js). The parser handles both formats.
 
 ### Block types supported by articles
 
@@ -203,26 +212,33 @@ Each range is `{ "offset": <int>, "length": <int>, "style": "<STYLE>" }`. Multip
 
 ### Entity types (entityMap)
 
-Entities are referenced by key in `entityRanges` and defined in `entityMap`. Standard entity types:
+Entities are referenced by key in `entityRanges` and defined in `entityMap`. **V1 finding:** In the `TweetResultByRestId` response, `entityMap` is an **array of `{key, value}` pairs**, not a standard Draft.js map. Entity types observed in real articles:
 
-| Entity Type  | Mutability  | Data Fields                                    | Notes                         |
-|--------------|-------------|------------------------------------------------|-------------------------------|
-| `LINK`       | `MUTABLE`   | `url`                                          | Hyperlinks                    |
-| `IMAGE`      | `IMMUTABLE` | `src`, `width`, `height`, possibly `media_key` | Used with `atomic` blocks     |
-| `MENTION`    | `IMMUTABLE` | `user_id`, `screen_name`                       | @mentions (Twitter-specific)  |
-| `HASHTAG`    | `IMMUTABLE` | `tag`                                          | #hashtags (Twitter-specific)  |
+| Entity Type  | Mutability   | Data Fields                                    | Notes                              |
+|--------------|--------------|------------------------------------------------|------------------------------------|
+| `LINK`       | `MUTABLE`    | `url`                                          | Hyperlinks                         |
+| `MEDIA`      | `Immutable`  | `src`                                          | Images — used with `atomic` blocks |
+| `TWEMOJI`    | `IMMUTABLE`  | (emoji data)                                   | Twitter emoji entities             |
+| `MARKDOWN`   | `IMMUTABLE`  | (formatting data)                              | Markdown-style formatting          |
+| `MENTION`    | `IMMUTABLE`  | `user_id`, `screen_name`                       | @mentions (Twitter-specific)       |
+| `HASHTAG`    | `IMMUTABLE`  | `tag`                                          | #hashtags (Twitter-specific)       |
 
-**Embedded tweets** are likely represented as `atomic` blocks with an entity of a custom type (e.g., `EMBEDDED_TWEET` or `TWEET`) with a `tweet_id` in the data field. This needs verification.
+**V1 finding:** Images use entity type `MEDIA` (not `IMAGE`). Mutability values use mixed casing (`Immutable` vs `IMMUTABLE`). The `ImageCount()` method checks for both `IMAGE` and `MEDIA` types.
 
-**Confidence: MEDIUM** -- LINK and IMAGE are standard Draft.js. Twitter-specific entity types (MENTION, HASHTAG, embedded tweets) are educated guesses based on Twitter's domain; the exact type strings need verification.
+**Confidence: VERIFIED** for LINK, MEDIA, TWEMOJI, MARKDOWN — observed in real V1 test. MENTION and HASHTAG are plausible but not yet confirmed in article content.
 
-### What must be verified in code
+### Verified in V1
 
-1. **The exact field name** for the article body content in the response (when `withArticleRichContentState: true`)
-2. **Whether the content is a JSON object or a JSON string** that needs parsing
-3. **The exact entity types** used for embedded tweets, images, and Twitter-specific entities
-4. **Whether any custom block types** beyond standard Draft.js are used (e.g., for LaTeX)
-5. **How author information** is returned -- likely as a separate `user` field at the tweet/article level, not within the blocks
+1. **Field name:** `content_state` (not `rich_content_state`)
+2. **Content format:** JSON object (not a JSON string) — no double-parsing needed
+3. **Entity types:** `LINK`, `MEDIA`, `TWEMOJI`, `MARKDOWN` confirmed. `MEDIA` (not `IMAGE`) for images.
+4. **Entity map format:** Array of `{key, value}` pairs in the API response (not a standard Draft.js map)
+5. **Author information:** Comes from the tweet wrapper at `core.user_results.result.core.{name, screen_name}`, not from the article result
+
+### Still to verify
+
+1. **Custom block types** beyond standard Draft.js (e.g., for LaTeX) — not yet encountered
+2. **Embedded tweet blocks** — exact entity type not yet observed
 
 ---
 
@@ -234,8 +250,8 @@ X's frontend is a React SPA bundled with Webpack. The JavaScript is split into c
 
 ```javascript
 {
-  queryId: "hwrvh-Qt24lcprL-BDfqRA",
-  operationName: "TwitterArticleByRestId",
+  queryId: "d6YKjvQ920F-D4Y1PruO-A",
+  operationName: "TweetResultByRestId",
   operationType: "query",
   metadata: {
     featureSwitches: [
@@ -289,8 +305,8 @@ Object.keys(modules).forEach(k => {
 });
 
 // Step 4: Get the article endpoint
-console.log(operations["TwitterArticleByRestId"]);
-// { queryId: "...", operationName: "TwitterArticleByRestId", ... }
+console.log(operations["TweetResultByRestId"]);
+// { queryId: "...", operationName: "TweetResultByRestId", ... }
 ```
 
 **Confidence: HIGH** -- this is a documented, tested approach.
@@ -374,19 +390,19 @@ pattern := `queryId:"([^"]+)"[^}]*operationName:"([^"]+)"`
 ### Complete URL format
 
 ```
-GET https://x.com/i/api/graphql/{queryId}/TwitterArticleByRestId?variables={...}&features={...}&fieldToggles={...}
+GET https://x.com/i/api/graphql/{queryId}/TweetResultByRestId?variables={...}&features={...}&fieldToggles={...}
 ```
 
 Where:
-- `{queryId}` is the current query ID extracted from the JS bundle (e.g., `hwrvh-Qt24lcprL-BDfqRA` -- this rotates)
+- `{queryId}` is the current query ID extracted from the JS bundle (e.g., `d6YKjvQ920F-D4Y1PruO-A` -- this rotates every 2-4 weeks)
 - `variables`, `features`, and `fieldToggles` are URL-encoded JSON strings
 
-**Confidence: HIGH** -- URL format confirmed across multiple sources.
+**Confidence: VERIFIED** — confirmed by V1 implementation.
 
 ### Required HTTP headers
 
 ```http
-GET /i/api/graphql/{queryId}/TwitterArticleByRestId?variables=...&features=...&fieldToggles=... HTTP/2
+GET /i/api/graphql/{queryId}/TweetResultByRestId?variables=...&features=...&fieldToggles=... HTTP/2
 Host: x.com
 Authorization: Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA
 X-Csrf-Token: <ct0 cookie value>
@@ -419,13 +435,17 @@ This is X's web client bearer token. It is:
 
 ```json
 {
-  "rest_id": "<article_snowflake_id>"
+  "tweetId": "<tweet_snowflake_id>",
+  "includePromotedContent": true,
+  "withBirdwatchNotes": true,
+  "withVoice": true,
+  "withCommunity": true
 }
 ```
 
-The article ID is the numeric snowflake ID from the article URL (`https://x.com/i/article/<id>`).
+**V1 finding:** The article URL's snowflake ID (`https://x.com/{user}/article/<id>` or `https://x.com/i/article/<id>`) IS a tweet ID. The variable name is `tweetId` (not `rest_id`). Additional boolean parameters are required.
 
-**Confidence: HIGH** -- confirmed from twitter-api-client `constants.py` where `TwitterArticleByRestId` is defined as `{'rest_id': str}, 'hwrvh-Qt24lcprL-BDfqRA', 'TwitterArticleByRestId'`.
+**Confidence: VERIFIED** — confirmed by V1 implementation.
 
 ### The `features` parameter
 
@@ -481,9 +501,9 @@ This is the critical parameter that controls whether the article body content is
 ### Complete curl example
 
 ```bash
-curl -s -G 'https://x.com/i/api/graphql/hwrvh-Qt24lcprL-BDfqRA/TwitterArticleByRestId' \
-  --data-urlencode 'variables={"rest_id":"1234567890123456789"}' \
-  --data-urlencode 'features={"rweb_tipjar_consumption_enabled":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"rweb_video_timestamps_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_enhance_cards_enabled":false,"responsive_web_twitter_article_data_v2_enabled":true}' \
+curl -s -G 'https://x.com/i/api/graphql/d6YKjvQ920F-D4Y1PruO-A/TweetResultByRestId' \
+  --data-urlencode 'variables={"tweetId":"1234567890123456789","includePromotedContent":true,"withBirdwatchNotes":true,"withVoice":true,"withCommunity":true}' \
+  --data-urlencode 'features={...}' \
   --data-urlencode 'fieldToggles={"withArticleRichContentState":true,"withArticlePlainText":false,"withGrokAnalyze":false}' \
   -H 'Authorization: Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA' \
   -H 'X-Csrf-Token: YOUR_CT0_VALUE' \
@@ -492,19 +512,19 @@ curl -s -G 'https://x.com/i/api/graphql/hwrvh-Qt24lcprL-BDfqRA/TwitterArticleByR
   -H 'X-Twitter-Client-Language: en' \
   -H 'Cookie: auth_token=YOUR_AUTH_TOKEN; ct0=YOUR_CT0_VALUE' \
   -H 'Referer: https://x.com/' \
-  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36'
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:137.0) Gecko/20100101 Firefox/137.0'
 ```
 
-**NOTE**: The query ID `hwrvh-Qt24lcprL-BDfqRA` is from twitter-api-client and WILL have rotated by now. You must extract the current one first.
+**NOTE**: The query ID `d6YKjvQ920F-D4Y1PruO-A` was current as of V1 implementation. Query IDs rotate every 2-4 weeks. The `x-client-transaction-id` header is NOT required (verified in V1).
 
-### What must be verified in code
+### Verified in V1
 
-1. **Whether the query ID from twitter-api-client is still current** (almost certainly not -- it rotates every 2-4 weeks)
-2. **Whether all listed features are required** or if a minimal subset works
-3. **Whether `fieldToggles` is passed as a separate query parameter** or nested inside `variables`
-4. **The exact response shape** when `withArticleRichContentState: true` is set
-5. **Whether the article body is a JSON object or a JSON-encoded string** within the response
-6. **Error responses** -- what does a 400/403/404 look like? What errors indicate an expired query ID vs bad auth vs missing article?
+1. **Query ID:** `d6YKjvQ920F-D4Y1PruO-A` for `TweetResultByRestId` (as of V1 implementation — rotates every 2-4 weeks)
+2. **Features:** A set of ~32 boolean flags is needed; the server tolerates extras but may require certain ones (see `client.go` for the full list)
+3. **`fieldToggles`:** Passed as a separate query parameter (not nested inside `variables`)
+4. **Response shape:** `data.tweetResult.result.article.article_results.result` contains the article with `content_state` as Draft.js
+5. **Article body:** JSON object (not a JSON-encoded string)
+6. **Error responses:** HTTP 403 = missing/invalid auth; HTTP 400 = missing required features; empty `result: {}` = wrong operation or missing `fieldToggles`
 
 ---
 
@@ -512,13 +532,18 @@ curl -s -G 'https://x.com/i/api/graphql/hwrvh-Qt24lcprL-BDfqRA/TwitterArticleByR
 
 | Item | Confidence | Source(s) |
 |------|------------|-----------|
-| Operation name is `TwitterArticleByRestId` | HIGH | twitter-api-client, fa0311/twitter-openapi |
-| Variables: `{"rest_id": "<snowflake_id>"}` | HIGH | twitter-api-client constants.py |
-| Bearer token value | HIGH | twitter-api-client, yt-dlp, twikit, HN discussion |
-| Required HTTP headers | HIGH | twitter-api-client util.py, twikit, yt-dlp |
-| Feature flags dict | MEDIUM-HIGH | RSSHub issue, twitter-api-client, twikit |
-| `fieldToggles.withArticleRichContentState: true` unlocks body | HIGH | twikit gql.py |
-| Article body is Draft.js `RawDraftContentState` format | MEDIUM-HIGH | twitter-forks/draft-js, A1 spike block model description |
+| Operation is `TweetResultByRestId` (articles are tweets) | VERIFIED | V1 implementation with real API |
+| Variables: `{"tweetId": "<snowflake_id>", ...}` | VERIFIED | V1 implementation |
+| Bearer token value | VERIFIED | V1 implementation (same token used by all libraries) |
+| Required HTTP headers | VERIFIED | V1 implementation |
+| Feature flags dict (~32 boolean flags) | VERIFIED | V1 implementation (from browser dev tools) |
+| `fieldToggles.withArticleRichContentState: true` unlocks body | VERIFIED | V1 implementation |
+| Article body field is `content_state` (not `rich_content_state`) | VERIFIED | V1 implementation |
+| Article body is Draft.js `RawDraftContentState` format | VERIFIED | V1 implementation |
+| Entity map is array of `{key, value}` pairs (not a map) | VERIFIED | V1 implementation |
+| Entity types: MEDIA (not IMAGE), LINK, TWEMOJI, MARKDOWN | VERIFIED | V1 implementation |
+| Author info from tweet wrapper `core.user_results` | VERIFIED | V1 implementation |
+| `x-client-transaction-id` header NOT required | VERIFIED | V1 implementation |
 | Draft.js block types and inline styles | HIGH | Draft.js official docs |
 | Query IDs are in webpack `api` chunk | HIGH | Zenn.dev reverse engineering doc |
 | Browser console extraction of query IDs | HIGH | Documented and tested approach |
@@ -527,12 +552,18 @@ curl -s -G 'https://x.com/i/api/graphql/hwrvh-Qt24lcprL-BDfqRA/TwitterArticleByR
 
 ---
 
-## Recommended Next Steps
+## Status: Resolved by V1
 
-1. **Manual verification first**: Open browser dev tools on an actual X article page, find the `TwitterArticleByRestId` request in the Network tab, and capture the full request/response. This single action resolves all remaining uncertainties.
+All unknowns have been resolved by V1 implementation. Key discoveries vs. initial research:
 
-2. **Build the curl test**: Use the curl example above with a real `auth_token` + `ct0` and a current query ID (extracted from browser dev tools) to confirm the request format works.
+| Item | Research prediction | V1 reality |
+|------|-------------------|------------|
+| Operation | `TwitterArticleByRestId` | `TweetResultByRestId` (articles are tweets) |
+| Variable | `{"rest_id": "..."}` | `{"tweetId": "...", ...}` |
+| Response path | `data.article.article_results.result` | `data.tweetResult.result.article.article_results.result` |
+| Content field | `rich_content_state` (guessed) | `content_state` |
+| Entity map | Standard Draft.js map | Array of `{key, value}` pairs |
+| Image entity type | `IMAGE` | `MEDIA` |
+| Author info | Assumed in article result | In tweet wrapper at `core.user_results` |
 
-3. **Implement query ID extraction**: Start with the browser console method to get a known-good query ID, then build the Go regex extraction as a second step.
-
-4. **Build Go types**: Define Go structs for the Draft.js `RawDraftContentState` format -- this is stable and well-documented regardless of any API changes.
+The library-based research was directionally correct (GraphQL + Draft.js + cookie auth) but wrong on specifics. The browser dev tools `Copy as cURL` approach resolved everything in one step.
