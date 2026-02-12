@@ -38,8 +38,13 @@ func run(args []string) error {
 
 	ctx := context.Background()
 
+	queryID, err := extract.ResolveQueryID(ctx, cfg.QueryID)
+	if err != nil {
+		return err
+	}
+
 	log.Println("Fetching article...")
-	body, err := extract.FetchArticle(ctx, articleID, cfg)
+	body, err := extract.FetchArticle(ctx, articleID, queryID, cfg)
 	if err != nil {
 		return err
 	}

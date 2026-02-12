@@ -14,8 +14,8 @@ import (
 const (
 	bearerToken = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
 
-	// defaultQueryID is a hardcoded query ID for TweetResultByRestId.
-	// This rotates every 2-4 weeks. Override with --query-id flag.
+	// defaultQueryID is the hardcoded fallback query ID for TweetResultByRestId.
+	// This rotates every 2-4 weeks. ResolveQueryID tries to extract it dynamically first.
 	defaultQueryID = "d6YKjvQ920F-D4Y1PruO-A"
 
 	graphQLEndpoint = "https://x.com/i/api/graphql"
@@ -68,13 +68,9 @@ var fieldToggles = map[string]bool{
 }
 
 // FetchArticle makes the GraphQL request to fetch an X article by its tweet ID.
+// The queryID should be obtained via ResolveQueryID.
 // Returns the raw response body bytes.
-func FetchArticle(ctx context.Context, articleID string, cfg *config.Config) ([]byte, error) {
-	queryID := defaultQueryID
-	if cfg.QueryID != "" {
-		queryID = cfg.QueryID
-	}
-
+func FetchArticle(ctx context.Context, articleID, queryID string, cfg *config.Config) ([]byte, error) {
 	reqURL, err := buildRequestURL(queryID, articleID)
 	if err != nil {
 		return nil, fmt.Errorf("building request URL: %w", err)
