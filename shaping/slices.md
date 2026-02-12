@@ -34,7 +34,7 @@
 | N2 | P2 | extract | `extractArticleID(url)` | call | — | → N5 |
 | N5 | P2 | extract | `fetchArticle(articleID, queryID, config)` — hardcoded query ID | call | → N14 | → N6 |
 | N6 | P2 | extract | `parseArticle(response)` | call | — | → S3 |
-| N14 | P3 | — | `GET TwitterArticleByRestId` | call | — | → N5 |
+| N14 | P3 | — | `GET TweetResultByRestId` | call | — | → N5 |
 | S1 | P2 | — | `config` (from flags only) | store | — | — |
 | S3 | P2 | — | `article` (metadata + blocks) | store | — | → U5 |
 
@@ -172,7 +172,7 @@ flowchart TB
     end
 
     %% External systems
-    N14["N14: GET TwitterArticleByRestId"]
+    N14["N14: GET TweetResultByRestId"]
     N15["N15: POST /v2/translate"]
     N16["N16: page.PrintToPDF()"]
 
@@ -258,5 +258,5 @@ flowchart TB
 
 |  |  |  |
 |:--|:--|:--|
-| **V1: EXTRACT ARTICLE**<br>⏳ PENDING<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via GraphQL (hardcoded query ID)<br>• Parse Draft.js blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>⏳ PENDING<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Write PDF to disk<br><br>*Demo: Run command, get a well-formatted PDF* | **V3: TRANSLATION**<br>⏳ PENDING<br><br>• --translate and --deepl-key flags<br>• DeepL API with XML tag handling<br>• ignore_tags for code/LaTeX<br>• Translation validation (block count, byte-identity, length)<br><br>*Demo: Run with --translate de, get German PDF* |
+| **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>⏳ PENDING<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Write PDF to disk<br><br>*Demo: Run command, get a well-formatted PDF* | **V3: TRANSLATION**<br>⏳ PENDING<br><br>• --translate and --deepl-key flags<br>• DeepL API with XML tag handling<br>• ignore_tags for code/LaTeX<br>• Translation validation (block count, byte-identity, length)<br><br>*Demo: Run with --translate de, get German PDF* |
 | **V4: QUALITY VALIDATION**<br>⏳ PENDING<br><br>• pdfcpu: structural integrity, page count, image count<br>• ledongthuc/pdf: text extraction<br>• Title/author present, word count ±15%<br>• Soft warnings vs hard failures<br><br>*Demo: Run command, see validation pass/warnings* | **V5: CONFIG + QUERY ID**<br>⏳ PENDING<br><br>• Config file (~/.config/x-article-exporter/config.yaml)<br>• CLI flags override config values<br>• Query ID: cache (24h) → bundle extraction → manual<br>• Auth flags become optional<br><br>*Demo: Config file works, query ID auto-resolves* | |
