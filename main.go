@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
+	"regexp"
 	"strings"
 
 	"github.com/annismckenzie/x-article-exporter/internal/config"
 	"github.com/annismckenzie/x-article-exporter/internal/extract"
-	"github.com/annismckenzie/x-article-exporter/internal/model"
+	"github.com/annismckenzie/x-article-exporter/internal/images"
+	"github.com/annismckenzie/x-article-exporter/internal/render"
 )
 
 func main() {
@@ -57,65 +58,52 @@ func run(args []string) error {
 		fmt.Fprintln(os.Stderr, "warning: article has no content blocks (content_state may be empty)")
 	}
 
-	printSummary(article)
+	log.Println("Downloading images...")
+	if err := images.DownloadImages(ctx, article); err != nil {
+		return err
+	}
+
+	log.Println("Rendering HTML...")
+	htmlContent := render.RenderHTML(article)
+
+	if os.Getenv("DEBUG") != "" {
+		os.WriteFile("debug_render.html", []byte(htmlContent), 0644)
+		log.Println("HTML written to debug_render.html")
+	}
+
+	log.Println("Generating PDF...")
+	pdfBytes, err := render.PrintToPDF(ctx, htmlContent)
+	if err != nil {
+		return err
+	}
+
+	outputPath := cfg.Output
+	if outputPath == "" {
+		outputPath = sanitizeFilename(article.Title) + ".pdf"
+	}
+
+	if err := os.WriteFile(outputPath, pdfBytes, 0644); err != nil {
+		return fmt.Errorf("writing PDF: %w", err)
+	}
+
+	fmt.Printf("PDF written to %s\n", outputPath)
 	return nil
 }
 
-func printSummary(a *model.Article) {
-	fmt.Printf("Article: %s\n", a.Title)
+// sanitizeFilename replaces characters that are invalid in filenames.
+var unsafeFilenameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
-	if a.Author != "" {
-		fmt.Printf("Author:  %s\n", a.Author)
+func sanitizeFilename(title string) string {
+	name := strings.TrimSpace(title)
+	if name == "" {
+		return "article"
 	}
-
-	if !a.PublishedAt.IsZero() {
-		fmt.Printf("Date:    %s\n", a.PublishedAt.Format("2006-01-02"))
+	name = unsafeFilenameChars.ReplaceAllString(name, "_")
+	// Collapse multiple underscores.
+	name = regexp.MustCompile(`_+`).ReplaceAllString(name, "_")
+	name = strings.Trim(name, "_")
+	if name == "" {
+		return "article"
 	}
-
-	if a.CoverImageURL != "" {
-		fmt.Printf("Cover:   %s\n", a.CoverImageURL)
-	}
-
-	fmt.Println()
-
-	// Block counts
-	blockCounts := a.BlockCounts()
-	fmt.Printf("Blocks: %d\n", len(a.Blocks))
-	if len(blockCounts) > 0 {
-		printCounts(blockCounts)
-	}
-
-	fmt.Println()
-
-	// Entity counts
-	entityCounts := a.EntityCounts()
-	fmt.Printf("Entities: %d\n", len(a.EntityMap))
-	if len(entityCounts) > 0 {
-		printCounts(entityCounts)
-	}
-
-	fmt.Println()
-	fmt.Printf("Images: %d (from entity map)\n", a.ImageCount())
-}
-
-func printCounts(counts map[string]int) {
-	// Sort keys for deterministic output
-	keys := make([]string, 0, len(counts))
-	for k := range counts {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	// Find max key length for alignment
-	maxLen := 0
-	for _, k := range keys {
-		if len(k) > maxLen {
-			maxLen = len(k)
-		}
-	}
-
-	for _, k := range keys {
-		padding := strings.Repeat(" ", maxLen-len(k))
-		fmt.Printf("  %s:%s %d\n", k, padding, counts[k])
-	}
+	return name
 }
