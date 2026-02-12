@@ -290,8 +290,8 @@ header {
   margin-bottom: 16pt;
 }
 
-.content h1 { font-size: 20pt; margin-top: 24pt; margin-bottom: 8pt; break-before: page; }
-.content h2 { font-size: 17pt; margin-top: 20pt; margin-bottom: 6pt; break-before: page; }
+.content h1 { font-size: 20pt; margin-top: 24pt; margin-bottom: 8pt; }
+.content h2 { font-size: 17pt; margin-top: 20pt; margin-bottom: 6pt; }
 h3 { font-size: 14pt; margin-top: 16pt; margin-bottom: 4pt; }
 h4, h5, h6 { font-size: 12pt; margin-top: 12pt; margin-bottom: 4pt; }
 
