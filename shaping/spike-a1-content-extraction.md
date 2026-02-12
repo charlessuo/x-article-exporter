@@ -15,7 +15,7 @@ Understand the technical structure of X articles, available APIs, auth requireme
 | **A1-Q1** | What are X articles and how do they differ from tweets? | Distinct entity type. Up to ~100k chars, rich formatting (headings, lists, code blocks, LaTeX, images, embedded tweets). URL: `https://x.com/i/article/{snowflake_id}`. Require Premium subscription to create. Separate from note tweets (long posts up to 25k chars).              |
 | **A1-Q2** | Is article content in the initial HTML response?        | **No.** X is a React SPA. The HTML is a shell with empty `articleEntities` in `__INITIAL_STATE__`. Zero content server-side. Bot user agents get a 404 page. No og:title, no og:description, no meta tags with content.                                                              |
 | **A1-Q3** | Does the official X API v2 support articles?            | **No.** No article endpoints exist. The API has `note_tweet` fields on tweets for long posts, but articles are a completely separate entity type with no public API coverage.                                                                                                        |
-| **A1-Q4** | What internal APIs exist for articles?                  | GraphQL API at `x.com/i/api/graphql/{queryId}/{operationName}`. Key endpoint: **`ArticleEntityResultByRestId`** (GET, fetches single article by ID). Also: `UserArticlesTweets`, `ArticleTimeline`, `ArticleEntitiesSlice`.                                                          |
+| **A1-Q4** | What internal APIs exist for articles?                  | GraphQL API at `x.com/i/api/graphql/{queryId}/{operationName}`. Key endpoint: **`TweetResultByRestId`** (GET, fetches article content via its parent tweet ID). Also: `UserArticlesTweets`, `ArticleTimeline`, `ArticleEntitiesSlice`. **V1 finding:** articles are fetched as tweets — the article URL's snowflake ID is a tweet ID, and the article content is nested inside the tweet response. |
 | **A1-Q5** | What authentication is required?                        | **Mandatory.** Cookie-based auth (`auth_token` + `ct0` cookies) from a real browser session is the most reliable. Guest tokens are heavily nerfed and likely insufficient for articles. Required headers: `Authorization: Bearer {hardcoded_token}`, `X-Csrf-Token: {ct0}`, cookies. |
 | **A1-Q6** | How stable are the GraphQL endpoints?                   | **Unstable.** Query IDs (`queryId` in the URL) rotate every 2-4 weeks. Must be extracted from X's JS bundles dynamically or updated manually. Feature flags must also be sent with requests.                                                                                         |
 | **A1-Q7** | What does the article content model look like?          | Block-based rich text (similar to ProseMirror/Slate). Up to 10,000 blocks, 25 media items, 100 char title. Supports: headings, paragraphs, bold/italic/strikethrough, bulleted/numbered lists, block quotes, code blocks, LaTeX, embedded tweets.                                    |
@@ -33,8 +33,8 @@ Understand the technical structure of X articles, available APIs, auth requireme
 - Cons: Slow (~5-10s per article), heavy dependency, browser fingerprint needed
 
 **Approach 2: Direct GraphQL API calls**
-- Call `ArticleEntityResultByRestId` with cookie auth + correct headers
-- Parse the block-based JSON response into structured content
+- Call `TweetResultByRestId` with cookie auth + correct headers
+- Parse the tweet-wrapped JSON response to extract article content
 - Pros: Fast, lightweight, precise structured data
 - Cons: Query IDs rotate every 2-4 weeks (maintenance burden), need to reverse-engineer response format, feature flags must be kept current
 
@@ -80,7 +80,7 @@ The query ID rotation is the main risk. Mitigation options:
 
 Spike is complete. We can describe:
 - How X articles are stored and served (block-based rich text, client-side rendered)
-- The specific API endpoint to fetch article content (`ArticleEntityResultByRestId`)
+- The specific API endpoint to fetch article content (`TweetResultByRestId` — articles are fetched as tweets)
 - What authentication is needed (cookie-based, `auth_token` + `ct0`)
 - The key risk (rotating query IDs) and mitigation strategies
 - Why GraphQL is preferred over headless browser for this use case
