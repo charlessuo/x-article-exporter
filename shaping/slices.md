@@ -122,20 +122,22 @@
 **Demo:** Create `~/.config/x-article-exporter/config.yaml` with `auth_token` and `ct0`. Run `x-article-exporter https://x.com/i/article/123456` without auth flags — works. Query ID auto-resolves from X's JS bundles, cached for 24h.
 
 **Notes:**
-- Config file loading: `~/.config/x-article-exporter/config.yaml`
-- CLI flags override config file values
-- `--auth-token`, `--ct0` become optional (config provides them)
-- `--query-id` added as manual override fallback
-- Query ID resolution: cache (S2, 24h TTL) → fetch from JS bundle (N4) → `--query-id` flag
-- Replaces hardcoded query ID from V1
+- YAML config file at `~/.config/x-article-exporter/config.yaml` (gopkg.in/yaml.v3)
+- Fields: `auth_token`, `ct0`, `ollama_model` — only persistent settings, per-invocation args stay CLI-only
+- CLI flags override config file values (detected via `flag.FlagSet.Visit`)
+- When auth missing and no config file: error includes tip with `mkdir -p` + `cat >` example
+- Query ID resolution chain: cache (24h TTL) → JS bundle extraction → `--query-id` flag → hardcoded fallback
+- Bundle extraction: fetch `x.com` HTML → find `main.*.js` URL → regex for `queryId:"...",operationName:"TweetResultByRestId"`
+- Cache at `~/.cache/x-article-exporter/query-id.json` (JSON, machine-managed)
+- Resolver never fatally errors — always falls through to a fallback
 
 **New affordances:**
 
 | #   | Place | Component | Affordance                                                                            | Control | Wires Out   | Returns To |
 | --- | ----- | --------- | ------------------------------------------------------------------------------------- | ------- | ----------- | ---------- |
-| N1  | P2    | config    | `loadConfig(flags, configPath)` — **extended**: reads config.yaml + merges with flags | call    | reads P6    | → S1       |
-| N3  | P2    | extract   | `resolveQueryID(config)` — cache → bundle → fallback                                  | call    | → N4 (miss) | → N5       |
-| N4  | P3    | extract   | `fetchQueryIDFromBundle()` — GET main.js → api chunk → regex                          | call    | —           | → S2, → N3 |
+| N1  | P2    | config    | `ParseFlags()` — **extended**: reads config.yaml + merges with flags                  | call    | reads P6    | → S1       |
+| N3  | P2    | extract   | `ResolveQueryID(ctx, flagOverride)` — cache → bundle → flag → hardcoded               | call    | → N4 (miss) | → N5       |
+| N4  | P3    | extract   | `fetchQueryIDFromBundle()` — GET x.com → find main.*.js → regex                       | call    | —           | → S2, → N3 |
 | S2  | P6    | —         | `queryIDCache` — 24h TTL, `~/.cache/x-article-exporter/query-id.json`                 | store   | —           | → N3       |
 
 **Changed wiring:** N2 (extractArticleID) now wires to N3 (resolveQueryID) instead of directly to N5. N3 wires to N5 with the resolved query ID.
@@ -266,4 +268,4 @@ flowchart TB
 |                                                                                                                                                                                                                                                                                                  |                                                                                                                                                                                                                                                                                               |                                                                                                                                                                                                                                                                                                                   |
 | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>✅ COMPLETE<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Embedded OpenSans font, HTML + PDF output<br><br>*Demo: Run command, get HTML + PDF*                                        | **V3: TRANSLATION**<br>✅ COMPLETE<br><br>• --translate and --ollama-model flags<br>• Local Ollama with translategemma:12b (55 languages)<br>• Batch 8 blocks per request, [N] delimiters<br>• Plain text translation (styles cleared), code/images skipped<br><br>*Demo: Run with --translate de, get German PDF* |
-| **V4: QUALITY VALIDATION**<br>⏳ PENDING<br><br>• pdfcpu: structural integrity, page count, image count<br>• ledongthuc/pdf: text extraction<br>• Title/author present, word count ±15%<br>• Soft warnings vs hard failures<br><br>*Demo: Run command, see validation pass/warnings*              | **V5: CONFIG + QUERY ID**<br>⏳ PENDING<br><br>• Config file (~/.config/x-article-exporter/config.yaml)<br>• CLI flags override config values<br>• Query ID: cache (24h) → bundle extraction → manual<br>• Auth flags become optional<br><br>*Demo: Config file works, query ID auto-resolves* |                                                                                                                                                                                                                                                                                                                   |
+| **V4: QUALITY VALIDATION**<br>⏳ PENDING<br><br>• pdfcpu: structural integrity, page count, image count<br>• ledongthuc/pdf: text extraction<br>• Title/author present, word count ±15%<br>• Soft warnings vs hard failures<br><br>*Demo: Run command, see validation pass/warnings*              | **V5: CONFIG + QUERY ID**<br>✅ COMPLETE<br><br>• YAML config file (~/.config/x-article-exporter/config.yaml)<br>• CLI flags override config via flag.Visit() detection<br>• Query ID: cache (24h) → main.*.js bundle → flag → hardcoded<br>• Helpful error with config creation tip when auth missing<br><br>*Demo: Config file replaces flags, query ID auto-resolves* |                                                                                                                                                                                                                                                                                                                   |
