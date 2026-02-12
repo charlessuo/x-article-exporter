@@ -2,13 +2,13 @@
 
 ## Slice Summary
 
-| # | Slice | Mechanism | Demo |
-|---|-------|-----------|------|
-| V1 | Extract article | A1 (content extraction) | "Run command with URL + auth flags, see article summary in terminal" |
-| V2 | Render PDF | A3 (PDF rendering) | "Run command, get a well-formatted PDF" |
-| V3 | Translation | A2 (translation) | "Run with `--translate de`, get German PDF" |
-| V4 | Quality validation | A4 (quality validation) | "Run command, see validation pass/warnings before output" |
-| V5 | Config + query ID | R5, A1 partial (query ID resolution) | "Config file replaces flags, query ID auto-resolves" |
+| #   | Slice              | Mechanism                            | Demo                                                                 |
+| --- | ------------------ | ------------------------------------ | -------------------------------------------------------------------- |
+| V1  | Extract article    | A1 (content extraction)              | "Run command with URL + auth flags, see article summary in terminal" |
+| V2  | Render PDF         | A3 (PDF rendering)                   | "Run command, get a well-formatted PDF"                              |
+| V3  | Translation        | A2 (translation)                     | "Run with `--translate de`, get German PDF"                          |
+| V4  | Quality validation | A4 (quality validation)              | "Run command, see validation pass/warnings before output"            |
+| V5  | Config + query ID  | R5, A1 partial (query ID resolution) | "Config file replaces flags, query ID auto-resolves"                 |
 
 ---
 
@@ -24,19 +24,19 @@
 
 **New affordances:**
 
-| # | Place | Component | Affordance | Control | Wires Out | Returns To |
-|---|-------|-----------|------------|---------|-----------|------------|
-| U1 | P1 | — | CLI args: `<url> --auth-token <t> --ct0 <c>` | invoke | → N1 | — |
-| U2 | P1 | — | Progress log | render | — | — |
-| U4 | P1 | — | Error messages (exit 1) | render | — | — |
-| U5 | P1 | — | Article summary (exit 0) | render | — | — |
-| N1 | P2 | config | `loadConfig(flags)` — parse CLI flags only, no config file | call | — | → S1 |
-| N2 | P2 | extract | `extractArticleID(url)` | call | — | → N5 |
-| N5 | P2 | extract | `fetchArticle(articleID, queryID, config)` — hardcoded query ID | call | → N14 | → N6 |
-| N6 | P2 | extract | `parseArticle(response)` | call | — | → S3 |
-| N14 | P3 | — | `GET TweetResultByRestId` | call | — | → N5 |
-| S1 | P2 | — | `config` (from flags only) | store | — | — |
-| S3 | P2 | — | `article` (metadata + blocks) | store | — | → U5 |
+| #   | Place | Component | Affordance                                                      | Control | Wires Out | Returns To |
+| --- | ----- | --------- | --------------------------------------------------------------- | ------- | --------- | ---------- |
+| U1  | P1    | —         | CLI args: `<url> --auth-token <t> --ct0 <c>`                    | invoke  | → N1      | —          |
+| U2  | P1    | —         | Progress log                                                    | render  | —         | —          |
+| U4  | P1    | —         | Error messages (exit 1)                                         | render  | —         | —          |
+| U5  | P1    | —         | Article summary (exit 0)                                        | render  | —         | —          |
+| N1  | P2    | config    | `loadConfig(flags)` — parse CLI flags only, no config file      | call    | —         | → S1       |
+| N2  | P2    | extract   | `extractArticleID(url)`                                         | call    | —         | → N5       |
+| N5  | P2    | extract   | `fetchArticle(articleID, queryID, config)` — hardcoded query ID | call    | → N14     | → N6       |
+| N6  | P2    | extract   | `parseArticle(response)`                                        | call    | —         | → S3       |
+| N14 | P3    | —         | `GET TweetResultByRestId`                                       | call    | —         | → N5       |
+| S1  | P2    | —         | `config` (from flags only)                                      | store   | —         | —          |
+| S3  | P2    | —         | `article` (metadata + blocks)                                   | store   | —         | → U5       |
 
 ---
 
@@ -56,13 +56,13 @@
 
 **New affordances:**
 
-| # | Place | Component | Affordance | Control | Wires Out | Returns To |
-|---|-------|-----------|------------|---------|-----------|------------|
-| N7 | P2 | extract | `downloadImages(blocks)` — fetch + base64-encode | call | — | updates S3 |
-| N10 | P2 | render | `renderHTML(article, blocks)` — Go template + CSS | call | — | → N11 |
-| N11 | P2 | render | `printToPDF(html)` — chromedp SetDocumentContent + PrintToPDF | call | → N16 | → N13 |
-| N13 | P6 | output | `writePDF(pdfBytes, outputPath)` | call | writes P6 | → U5 |
-| N16 | P5 | — | `page.PrintToPDF()` — Chrome DevTools Protocol | call | — | → N11 |
+| #   | Place | Component | Affordance                                                    | Control | Wires Out | Returns To |
+| --- | ----- | --------- | ------------------------------------------------------------- | ------- | --------- | ---------- |
+| N7  | P2    | extract   | `downloadImages(blocks)` — fetch + base64-encode              | call    | —         | updates S3 |
+| N10 | P2    | render    | `renderHTML(article, blocks)` — Go template + CSS             | call    | —         | → N11      |
+| N11 | P2    | render    | `printToPDF(html)` — chromedp SetDocumentContent + PrintToPDF | call    | → N16     | → N13      |
+| N13 | P6    | output    | `writePDF(pdfBytes, outputPath)`                              | call    | writes P6 | → U5       |
+| N16 | P5    | —         | `page.PrintToPDF()` — Chrome DevTools Protocol                | call    | —         | → N11      |
 
 ---
 
@@ -84,10 +84,10 @@
 
 **New affordances:**
 
-| # | Place | Component | Affordance | Control | Wires Out | Returns To |
-|---|-------|-----------|------------|---------|-----------|------------|
-| N8 | P2 | translate | `TranslateArticle(article, targetLang, client)` — batch translate in-place | call | → N15 | updates S3 |
-| N15 | local | — | `POST /api/chat` — Ollama (translategemma:12b) | call | — | → N8 |
+| #   | Place | Component | Affordance                                                                 | Control | Wires Out | Returns To |
+| --- | ----- | --------- | -------------------------------------------------------------------------- | ------- | --------- | ---------- |
+| N8  | P2    | translate | `TranslateArticle(article, targetLang, client)` — batch translate in-place | call    | → N15     | updates S3 |
+| N15 | local | —         | `POST /api/chat` — Ollama (translategemma:12b)                             | call    | —         | → N8       |
 
 ---
 
@@ -109,9 +109,9 @@
 
 **New affordances:**
 
-| # | Place | Component | Affordance | Control | Wires Out | Returns To |
-|---|-------|-----------|------------|---------|-----------|------------|
-| N12 | P2 | validate | `validatePDF(pdfBytes, article, blocks)` — pdfcpu + ledongthuc/pdf | call | — | → U3, → U4, → N13 |
+| #   | Place | Component | Affordance                                                         | Control | Wires Out | Returns To        |
+| --- | ----- | --------- | ------------------------------------------------------------------ | ------- | --------- | ----------------- |
+| N12 | P2    | validate  | `validatePDF(pdfBytes, article, blocks)` — pdfcpu + ledongthuc/pdf | call    | —         | → U3, → U4, → N13 |
 
 **Changed wiring:** N11 now wires to N12 instead of directly to N13. N12 gates output: pass → N13, hard fail → U4.
 
@@ -131,12 +131,12 @@
 
 **New affordances:**
 
-| # | Place | Component | Affordance | Control | Wires Out | Returns To |
-|---|-------|-----------|------------|---------|-----------|------------|
-| N1 | P2 | config | `loadConfig(flags, configPath)` — **extended**: reads config.yaml + merges with flags | call | reads P6 | → S1 |
-| N3 | P2 | extract | `resolveQueryID(config)` — cache → bundle → fallback | call | → N4 (miss) | → N5 |
-| N4 | P3 | extract | `fetchQueryIDFromBundle()` — GET main.js → api chunk → regex | call | — | → S2, → N3 |
-| S2 | P6 | — | `queryIDCache` — 24h TTL, `~/.cache/x-article-exporter/query-id.json` | store | — | → N3 |
+| #   | Place | Component | Affordance                                                                            | Control | Wires Out   | Returns To |
+| --- | ----- | --------- | ------------------------------------------------------------------------------------- | ------- | ----------- | ---------- |
+| N1  | P2    | config    | `loadConfig(flags, configPath)` — **extended**: reads config.yaml + merges with flags | call    | reads P6    | → S1       |
+| N3  | P2    | extract   | `resolveQueryID(config)` — cache → bundle → fallback                                  | call    | → N4 (miss) | → N5       |
+| N4  | P3    | extract   | `fetchQueryIDFromBundle()` — GET main.js → api chunk → regex                          | call    | —           | → S2, → N3 |
+| S2  | P6    | —         | `queryIDCache` — 24h TTL, `~/.cache/x-article-exporter/query-id.json`                 | store   | —           | → N3       |
 
 **Changed wiring:** N2 (extractArticleID) now wires to N3 (resolveQueryID) instead of directly to N5. N3 wires to N5 with the resolved query ID.
 
@@ -263,7 +263,7 @@ flowchart TB
 
 ## Slices Grid
 
-|  |  |  |
-|:--|:--|:--|
-| **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>✅ COMPLETE<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Embedded OpenSans font, HTML + PDF output<br><br>*Demo: Run command, get HTML + PDF* | **V3: TRANSLATION**<br>✅ COMPLETE<br><br>• --translate and --ollama-model flags<br>• Local Ollama with translategemma:12b (55 languages)<br>• Batch 8 blocks per request, [N] delimiters<br>• Plain text translation (styles cleared), code/images skipped<br><br>*Demo: Run with --translate de, get German PDF* |
-| **V4: QUALITY VALIDATION**<br>⏳ PENDING<br><br>• pdfcpu: structural integrity, page count, image count<br>• ledongthuc/pdf: text extraction<br>• Title/author present, word count ±15%<br>• Soft warnings vs hard failures<br><br>*Demo: Run command, see validation pass/warnings* | **V5: CONFIG + QUERY ID**<br>⏳ PENDING<br><br>• Config file (~/.config/x-article-exporter/config.yaml)<br>• CLI flags override config values<br>• Query ID: cache (24h) → bundle extraction → manual<br>• Auth flags become optional<br><br>*Demo: Config file works, query ID auto-resolves* | |
+|                                                                                                                                                                                                                                                                                                  |                                                                                                                                                                                                                                                                                               |                                                                                                                                                                                                                                                                                                                   |
+| :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>✅ COMPLETE<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Embedded OpenSans font, HTML + PDF output<br><br>*Demo: Run command, get HTML + PDF*                                        | **V3: TRANSLATION**<br>✅ COMPLETE<br><br>• --translate and --ollama-model flags<br>• Local Ollama with translategemma:12b (55 languages)<br>• Batch 8 blocks per request, [N] delimiters<br>• Plain text translation (styles cleared), code/images skipped<br><br>*Demo: Run with --translate de, get German PDF* |
+| **V4: QUALITY VALIDATION**<br>⏳ PENDING<br><br>• pdfcpu: structural integrity, page count, image count<br>• ledongthuc/pdf: text extraction<br>• Title/author present, word count ±15%<br>• Soft warnings vs hard failures<br><br>*Demo: Run command, see validation pass/warnings*              | **V5: CONFIG + QUERY ID**<br>⏳ PENDING<br><br>• Config file (~/.config/x-article-exporter/config.yaml)<br>• CLI flags override config values<br>• Query ID: cache (24h) → bundle extraction → manual<br>• Auth flags become optional<br><br>*Demo: Config file works, query ID auto-resolves* |                                                                                                                                                                                                                                                                                                                   |
