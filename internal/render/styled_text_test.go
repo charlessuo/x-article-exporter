@@ -154,6 +154,18 @@ func TestRenderStyledText(t *testing.T) {
 			},
 			want: `<a href="https://example.com/path?q=a&amp;b=c">Click here</a>`,
 		},
+		{
+			name: "title-case style names from API (Bold, Italic)",
+			block: model.Block{
+				Text: "Hello bold italic world",
+				InlineStyleRanges: []model.InlineStyleRange{
+					{Offset: 6, Length: 4, Style: "Bold"},
+					{Offset: 11, Length: 6, Style: "Italic"},
+				},
+			},
+			entityMap: nil,
+			want:      "Hello <strong>bold</strong> <em>italic</em> world",
+		},
 	}
 
 	for _, tt := range tests {

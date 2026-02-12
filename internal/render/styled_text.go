@@ -100,7 +100,7 @@ func renderStyledText(block model.Block, entityMap map[string]model.Entity) stri
 }
 
 func styleOpenTag(style string) string {
-	switch style {
+	switch strings.ToUpper(style) {
 	case "BOLD":
 		return "<strong>"
 	case "ITALIC":
@@ -117,7 +117,7 @@ func styleOpenTag(style string) string {
 }
 
 func styleCloseTag(style string) string {
-	switch style {
+	switch strings.ToUpper(style) {
 	case "BOLD":
 		return "</strong>"
 	case "ITALIC":
