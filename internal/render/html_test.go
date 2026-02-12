@@ -189,7 +189,7 @@ func TestRenderHTML(t *testing.T) {
 		{"code content joined", "fmt.Println(&#34;hello&#34;)\nfmt.Println(&#34;world&#34;)"},
 		{"blockquote", "<blockquote>"},
 		{"blockquote content", "<p>A wise quote.</p>"},
-		{"css styles", "font-family: Georgia"},
+		{"css styles", "font-family: 'Open Sans'"},
 	}
 
 	for _, c := range checks {

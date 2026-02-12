@@ -31,6 +31,7 @@ func RenderHTML(article *model.Article) string {
 		CoverImageURL: template.URL(article.CoverImageURL), //nolint:gosec // URLs are user-provided or base64 data URLs we generated
 		Groups:        groups,
 		EntityMap:     article.EntityMap,
+		FontFaceCSS:   template.CSS(fontFaceCSS()), //nolint:gosec // Generated from embedded font files
 	}
 
 	var buf bytes.Buffer
@@ -48,6 +49,7 @@ type templateData struct {
 	CoverImageURL template.URL // Trusted: URLs are either user-provided or base64 data URLs we generated.
 	Groups        []renderGroup
 	EntityMap     map[string]model.Entity
+	FontFaceCSS   template.CSS // Trusted: generated from embedded font files.
 }
 
 // groupBlocks pre-processes the flat block list into render groups.
@@ -185,6 +187,7 @@ const articleTemplate = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
 <style>
+{{.FontFaceCSS}}
 ` + cssStyles + `
 </style>
 </head>
@@ -244,7 +247,7 @@ const articleTemplate = `<!DOCTYPE html>
 
 const cssStyles = `
 body {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 12pt;
   line-height: 1.6;
   color: #1a1a1a;
@@ -287,8 +290,8 @@ header {
   margin-bottom: 16pt;
 }
 
-h1 { font-size: 20pt; margin-top: 24pt; margin-bottom: 8pt; }
-h2 { font-size: 17pt; margin-top: 20pt; margin-bottom: 6pt; }
+.content h1 { font-size: 20pt; margin-top: 24pt; margin-bottom: 8pt; break-before: page; }
+.content h2 { font-size: 17pt; margin-top: 20pt; margin-bottom: 6pt; break-before: page; }
 h3 { font-size: 14pt; margin-top: 16pt; margin-bottom: 4pt; }
 h4, h5, h6 { font-size: 12pt; margin-top: 12pt; margin-bottom: 4pt; }
 
@@ -352,9 +355,10 @@ li p {
 }
 
 figure {
-  margin: 16pt 0;
+  margin: 16pt auto;
   text-align: center;
   break-inside: avoid;
+  max-width: 80%;
 }
 
 figure img {
