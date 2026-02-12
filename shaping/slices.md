@@ -68,22 +68,26 @@
 
 ## V3: Translation
 
-**Demo:** `x-article-exporter https://x.com/i/article/123456 --auth-token abc --ct0 xyz --translate de --deepl-key KEY` → PDF in German with code blocks/LaTeX preserved unchanged.
+**Demo:** `x-article-exporter https://x.com/i/article/123456 --auth-token abc --ct0 xyz --translate de` → PDF in German with code blocks and images preserved unchanged.
 
 **Notes:**
-- `--translate <lang>` and `--deepl-key <key>` flags added
-- XML tag handling with `ignore_tags` for code/LaTeX
-- Translation validation runs automatically: block count, code byte-identity, length ratio ±30%
-- Soft warnings printed to terminal, hard failures exit 1
+- `--translate <lang>` and `--ollama-model <model>` flags added
+- Local Ollama with translategemma:12b (purpose-built translation model, 55 languages, no API key needed)
+- Batch translation: 8 blocks per request using `[N]` delimiters to avoid collision with numbered content
+- Plain text translation: InlineStyleRanges/EntityRanges cleared on translated blocks (render pipeline handles this gracefully)
+- Translatable block types: unstyled, headers, list items, blockquotes. Code blocks and atomic (images) skipped.
+- Title translated separately; trailing period stripped if original didn't have one
+- ~6 min for a full 70-block article on M3/32GB
+
+**Nice-to-have ideas:**
+- **Image text translation**: Images with text (screenshots, diagrams with labels) are not translated. Investigate OCR + overlay or image regeneration approaches. Spike needed to assess feasibility and quality.
 
 **New affordances:**
 
 | # | Place | Component | Affordance | Control | Wires Out | Returns To |
 |---|-------|-----------|------------|---------|-----------|------------|
-| U3 | P1 | — | Validation warnings (translation length ±30%) | render | — | — |
-| N8 | P2 | translate | `translateBlocks(blocks, targetLang, apiKey)` | call | → N15 | updates S3 |
-| N9 | P2 | translate | `validateTranslation(original, translated)` | call | — | → U3, → U4 |
-| N15 | P4 | — | `POST /v2/translate` — DeepL API | call | — | → N8 |
+| N8 | P2 | translate | `TranslateArticle(article, targetLang, client)` — batch translate in-place | call | → N15 | updates S3 |
+| N15 | local | — | `POST /api/chat` — Ollama (translategemma:12b) | call | — | → N8 |
 
 ---
 
@@ -120,7 +124,7 @@
 **Notes:**
 - Config file loading: `~/.config/x-article-exporter/config.yaml`
 - CLI flags override config file values
-- `--auth-token`, `--ct0`, `--deepl-key` become optional (config provides them)
+- `--auth-token`, `--ct0` become optional (config provides them)
 - `--query-id` added as manual override fallback
 - Query ID resolution: cache (S2, 24h TTL) → fetch from JS bundle (N4) → `--query-id` flag
 - Replaces hardcoded query ID from V1
@@ -163,9 +167,7 @@ flowchart TB
     end
 
     subgraph V3["V3: TRANSLATION"]
-        U3["U3: Warnings"]
-        N8["N8: translateBlocks()"]
-        N9["N9: validateTranslation()"]
+        N8["N8: TranslateArticle()"]
     end
 
     subgraph V4["V4: QUALITY VALIDATION"]
@@ -180,7 +182,7 @@ flowchart TB
 
     %% External systems
     N14["N14: GET TweetResultByRestId"]
-    N15["N15: POST /v2/translate"]
+    N15["N15: POST /api/chat (Ollama)"]
     N16["N16: page.PrintToPDF()"]
 
     %% Force slice ordering
@@ -212,14 +214,12 @@ flowchart TB
     N13 --> U5
 
     %% V3 flow (conditional)
-    N7 -->|if --translate| N8
+    N6 -->|if --translate| N8
     S3 -.-> N8
     N8 --> N15
     N15 -.-> N8
     N8 --> S3
-    N8 --> N9
-    N9 -.-> U3
-    N9 --> N10
+    N8 --> N7
 
     %% V4 flow
     N11 --> N12
@@ -253,8 +253,8 @@ flowchart TB
     classDef store fill:#e6e6fa,stroke:#9370db,color:#000
     classDef external fill:#b3e5fc,stroke:#0288d1,color:#000
 
-    class U1,U2,U3,U4,U5 ui
-    class N1,N2,N3,N4,N5,N6,N7,N8,N9,N10,N11,N12,N13 nonui
+    class U1,U2,U4,U5 ui
+    class N1,N2,N3,N4,N5,N6,N7,N8,N10,N11,N12,N13 nonui
     class N14,N15,N16 external
     class S1,S2,S3 store
 ```
@@ -265,5 +265,5 @@ flowchart TB
 
 |  |  |  |
 |:--|:--|:--|
-| **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>✅ COMPLETE<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Embedded OpenSans font, HTML + PDF output<br><br>*Demo: Run command, get HTML + PDF* | **V3: TRANSLATION**<br>⏳ PENDING<br><br>• --translate and --deepl-key flags<br>• DeepL API with XML tag handling<br>• ignore_tags for code/LaTeX<br>• Translation validation (block count, byte-identity, length)<br><br>*Demo: Run with --translate de, get German PDF* |
+| **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>✅ COMPLETE<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Embedded OpenSans font, HTML + PDF output<br><br>*Demo: Run command, get HTML + PDF* | **V3: TRANSLATION**<br>✅ COMPLETE<br><br>• --translate and --ollama-model flags<br>• Local Ollama with translategemma:12b (55 languages)<br>• Batch 8 blocks per request, [N] delimiters<br>• Plain text translation (styles cleared), code/images skipped<br><br>*Demo: Run with --translate de, get German PDF* |
 | **V4: QUALITY VALIDATION**<br>⏳ PENDING<br><br>• pdfcpu: structural integrity, page count, image count<br>• ledongthuc/pdf: text extraction<br>• Title/author present, word count ±15%<br>• Soft warnings vs hard failures<br><br>*Demo: Run command, see validation pass/warnings* | **V5: CONFIG + QUERY ID**<br>⏳ PENDING<br><br>• Config file (~/.config/x-article-exporter/config.yaml)<br>• CLI flags override config values<br>• Query ID: cache (24h) → bundle extraction → manual<br>• Auth flags become optional<br><br>*Demo: Config file works, query ID auto-resolves* | |
