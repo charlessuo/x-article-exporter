@@ -11,12 +11,9 @@ x-article-exporter
 *.swo
 *~
 
-# Debug output
-debug_response.json
-debug_render.html
-
-# Generated PDFs
+# Generated output
 *.pdf
+*.html
 
 # OS
 .DS_Store

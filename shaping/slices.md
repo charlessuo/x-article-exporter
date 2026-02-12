@@ -45,11 +45,14 @@
 **Demo:** `x-article-exporter https://x.com/i/article/123456 --auth-token abc --ct0 xyz --output ./article.pdf` → writes a well-formatted, self-contained PDF to disk.
 
 **Notes:**
-- Images downloaded and base64-embedded in HTML
-- Go HTML template with CSS print media
-- chromedp `PrintToPDF` with page numbers
-- Output file path via `--output` flag (default: `./{title}.pdf`)
-- U5 changes from article summary to "PDF written to ./article.pdf"
+- Images downloaded and base64-embedded in HTML (MEDIA entities resolved via `media_entities[]`)
+- Go HTML template with CSS print media, embedded OpenSans variable font
+- Block grouping: consecutive list items → `<ul>`/`<ol>`, code blocks → `<pre><code>`, blockquotes → `<blockquote>`
+- Boundary-based styled text renderer (handles overlapping Bold/Italic/Code/Link/Strikethrough ranges, case-insensitive)
+- Newlines within blocks converted to `<br>` tags
+- chromedp `PrintToPDF` with page numbers, h1/h2 `break-before: page`
+- Self-contained HTML always saved alongside PDF (diffable, shareable via Slack)
+- Output file path via `--output` flag (default: `./{title}.pdf` + `.html`)
 
 **New affordances:**
 
@@ -95,6 +98,10 @@
 - U3 extended with PDF validation warnings (word count off, image count mismatch)
 - Hard failures (missing title, PDF corrupt) → U4 (exit 1)
 - Soft warnings (word count slightly off) → U3 (exit 0)
+
+**Nice-to-have ideas (from V2 E2E feedback):**
+- **Per-article settings JSON**: A small JSON file alongside the article that overrides rendering settings (e.g., image max-width, page break locations, font size tweaks) for per-article taste adjustments. Each article has unique "sharp edges" that only manual tweaks can fix.
+- **Golden file testing**: Use the HTML output (pre-PDF) as golden files for regression/integration tests. The HTML is clean and deterministic, making it ideal for diffing.
 
 **New affordances:**
 
@@ -258,5 +265,5 @@ flowchart TB
 
 |  |  |  |
 |:--|:--|:--|
-| **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>⏳ PENDING<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Write PDF to disk<br><br>*Demo: Run command, get a well-formatted PDF* | **V3: TRANSLATION**<br>⏳ PENDING<br><br>• --translate and --deepl-key flags<br>• DeepL API with XML tag handling<br>• ignore_tags for code/LaTeX<br>• Translation validation (block count, byte-identity, length)<br><br>*Demo: Run with --translate de, get German PDF* |
+| **V1: EXTRACT ARTICLE**<br>✅ COMPLETE<br><br>• Parse CLI args (url, --auth-token, --ct0)<br>• Extract snowflake ID from URL<br>• Fetch article via TweetResultByRestId (hardcoded query ID)<br>• Parse Draft.js content_state blocks<br><br>*Demo: Run command, see article summary in terminal* | **V2: RENDER PDF**<br>✅ COMPLETE<br><br>• Download + base64-encode images<br>• Go HTML template + CSS print media<br>• chromedp PrintToPDF with page numbers<br>• Embedded OpenSans font, HTML + PDF output<br><br>*Demo: Run command, get HTML + PDF* | **V3: TRANSLATION**<br>⏳ PENDING<br><br>• --translate and --deepl-key flags<br>• DeepL API with XML tag handling<br>• ignore_tags for code/LaTeX<br>• Translation validation (block count, byte-identity, length)<br><br>*Demo: Run with --translate de, get German PDF* |
 | **V4: QUALITY VALIDATION**<br>⏳ PENDING<br><br>• pdfcpu: structural integrity, page count, image count<br>• ledongthuc/pdf: text extraction<br>• Title/author present, word count ±15%<br>• Soft warnings vs hard failures<br><br>*Demo: Run command, see validation pass/warnings* | **V5: CONFIG + QUERY ID**<br>⏳ PENDING<br><br>• Config file (~/.config/x-article-exporter/config.yaml)<br>• CLI flags override config values<br>• Query ID: cache (24h) → bundle extraction → manual<br>• Auth flags become optional<br><br>*Demo: Config file works, query ID auto-resolves* | |

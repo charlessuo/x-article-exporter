@@ -43,12 +43,6 @@ func run(args []string) error {
 		return err
 	}
 
-	// Debug: dump raw response to inspect structure
-	if os.Getenv("DEBUG") != "" {
-		os.WriteFile("debug_response.json", body, 0644)
-		log.Println("Raw response written to debug_response.json")
-	}
-
 	article, err := extract.ParseArticle(body)
 	if err != nil {
 		return err
@@ -66,10 +60,18 @@ func run(args []string) error {
 	log.Println("Rendering HTML...")
 	htmlContent := render.RenderHTML(article)
 
-	if os.Getenv("DEBUG") != "" {
-		os.WriteFile("debug_render.html", []byte(htmlContent), 0644)
-		log.Println("HTML written to debug_render.html")
+	basePath := cfg.Output
+	if basePath == "" {
+		basePath = sanitizeFilename(article.Title)
+	} else {
+		basePath = strings.TrimSuffix(basePath, ".pdf")
 	}
+
+	htmlPath := basePath + ".html"
+	if err := os.WriteFile(htmlPath, []byte(htmlContent), 0644); err != nil {
+		return fmt.Errorf("writing HTML: %w", err)
+	}
+	log.Printf("HTML written to %s", htmlPath)
 
 	log.Println("Generating PDF...")
 	pdfBytes, err := render.PrintToPDF(ctx, htmlContent)
@@ -77,16 +79,12 @@ func run(args []string) error {
 		return err
 	}
 
-	outputPath := cfg.Output
-	if outputPath == "" {
-		outputPath = sanitizeFilename(article.Title) + ".pdf"
-	}
-
-	if err := os.WriteFile(outputPath, pdfBytes, 0644); err != nil {
+	pdfPath := basePath + ".pdf"
+	if err := os.WriteFile(pdfPath, pdfBytes, 0644); err != nil {
 		return fmt.Errorf("writing PDF: %w", err)
 	}
 
-	fmt.Printf("PDF written to %s\n", outputPath)
+	fmt.Printf("PDF written to %s\n", pdfPath)
 	return nil
 }
 

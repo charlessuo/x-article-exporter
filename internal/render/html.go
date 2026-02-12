@@ -358,7 +358,10 @@ figure {
   margin: 16pt auto;
   text-align: center;
   break-inside: avoid;
-  max-width: 80%;
+}
+
+.content figure {
+  max-width: 60%;
 }
 
 figure img {
