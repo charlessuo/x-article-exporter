@@ -27,7 +27,7 @@ Design a validation pipeline with specific Go libraries, thresholds, and a strat
 | -------------------------------------------- | ------------------------------- | ----- | ----------------------------------- |
 | PDF structural integrity                     | `pdfcpu.ValidateFile()`         | ~5ms  | Catches corruption                  |
 | Page count > 0                               | `pdfcpu.PageCountFile()`        | ~2ms  | Catches blank output                |
-| Image count matches input                    | `pdfcpu.ExtractImagesRaw()`     | ~20ms | Catches broken images               |
+| Image count matches input                    | `pdfcpu.ExtractImagesRaw()`     | ~20ms | Catches broken images (note: image entities use type `MEDIA`, not `IMAGE` — count both) |
 | Title present in PDF text                    | `ledongthuc/pdf.GetPlainText()` | ~50ms | Catches extraction failure          |
 | Author present in PDF text                   | (same extraction)               | ~0ms  | Catches extraction failure          |
 | Word count within ±15% of input              | (same extraction)               | ~0ms  | Catches truncation/duplication      |
