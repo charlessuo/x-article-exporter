@@ -9,6 +9,8 @@
 | V3  | Translation        | A2 (translation)                     | "Run with `--translate de`, get German PDF"                          |
 | V4  | Quality validation | A4 (quality validation)              | "Run command, see validation pass/warnings before output"            |
 | V5  | Config + query ID  | R5, A1 partial (query ID resolution) | "Config file replaces flags, query ID auto-resolves"                 |
+| V6  | Web API            | A6 (HTTP API server)                 | "POST URL to API, get PDF back"                                      |
+| V7  | Thread export      | A5 (thread extraction + rendering)   | "Pass thread URL, get thread PDF"                                    |
 
 ---
 
@@ -272,10 +274,12 @@ flowchart TB
 
 ## Slices Grid
 
-| Slice                      | Status      | Highlights                                                                                                                                            | Demo                                               |
-| :------------------------- | :---------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
-| **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                              | Run command, see article summary in terminal       |
-| **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, Go HTML template + CSS print media, chromedp PrintToPDF, embedded OpenSans font, HTML + PDF output                   | Run command, get HTML + PDF                        |
-| **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped        | Run with --translate de, get German PDF            |
-| **V4: Quality Validation** | ⏳ Pending  | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures | Run command, see validation pass/warnings          |
-| **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error | Config file replaces flags, query ID auto-resolves |
+| Slice                      | Status      | Highlights                                                                                                                                             | Demo                                               |
+| :------------------------- | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
+| **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                               | Run command, see article summary in terminal       |
+| **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, Go HTML template + CSS print media, chromedp PrintToPDF, embedded OpenSans font, HTML + PDF output                    | Run command, get HTML + PDF                        |
+| **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped         | Run with --translate de, get German PDF            |
+| **V4: Quality Validation** | ⏳ Pending  | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures  | Run command, see validation pass/warnings          |
+| **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |
+| **V6: Web API**            | ⏳ Pending  | net/http server, POST /export + GET /export/{id} + GET /export/{id}/pdf, API key auth, async job manager with goroutines, rate limiting                | POST URL to API, get PDF back                      |
+| **V7: Thread Export**      | ⏳ Pending  | Detect thread vs article URL, walk self-reply chain, parse tweets into block model, thread-specific HTML template with tweet cards. Spike needed (A5). | Pass thread URL, get thread PDF                    |
