@@ -45,9 +45,14 @@ func TestExtractArticleID(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "tweet URL instead of article",
-			url:     "https://x.com/user/status/123456",
-			wantErr: true,
+			name: "valid status URL",
+			url:  "https://x.com/another_user/status/9876543210987654321",
+			want: "9876543210987654321",
+		},
+		{
+			name: "valid twitter.com status URL",
+			url:  "https://twitter.com/user/status/123456",
+			want: "123456",
 		},
 		{
 			name:    "missing article ID",

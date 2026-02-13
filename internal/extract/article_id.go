@@ -10,6 +10,7 @@ import (
 // Accepts URLs like:
 //   - https://x.com/i/article/1234567890
 //   - https://x.com/{username}/article/1234567890
+//   - https://x.com/{username}/status/1234567890
 //   - https://twitter.com/{username}/article/1234567890
 func ExtractArticleID(rawURL string) (string, error) {
 	u, err := url.Parse(rawURL)
@@ -22,10 +23,10 @@ func ExtractArticleID(rawURL string) (string, error) {
 		return "", fmt.Errorf("invalid article URL: host must be x.com or twitter.com, got %q", host)
 	}
 
-	// Expected path: /{username_or_i}/article/{id}
+	// Expected path: /{username_or_i}/article/{id} or /{username}/status/{id}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
-	if len(parts) != 3 || parts[1] != "article" {
-		return "", fmt.Errorf("invalid article URL: expected path /{user}/article/{id}, got %q", u.Path)
+	if len(parts) != 3 || (parts[1] != "article" && parts[1] != "status") {
+		return "", fmt.Errorf("invalid article URL: expected path /{user}/article/{id} or /{user}/status/{id}, got %q", u.Path)
 	}
 
 	articleID := parts[2]
