@@ -50,7 +50,7 @@
 - Block grouping: consecutive list items → `<ul>`/`<ol>`, code blocks → `<pre><code>`, blockquotes → `<blockquote>`
 - Boundary-based styled text renderer (handles overlapping Bold/Italic/Code/Link/Strikethrough ranges, case-insensitive)
 - Newlines within blocks converted to `<br>` tags
-- chromedp `PrintToPDF` with page numbers, h1/h2 `break-before: page`
+- chromedp `PrintToPDF` with page numbers
 - Self-contained HTML always saved alongside PDF (diffable, shareable via Slack)
 - Output file path via `--output` flag (default: `./{title}.pdf` + `.html`)
 
@@ -265,10 +265,10 @@ flowchart TB
 
 ## Slices Grid
 
-| Slice | Status | Highlights | Demo |
-| :---- | :----- | :--------- | :--- |
-| **V1: Extract Article** | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks | Run command, see article summary in terminal |
-| **V2: Render PDF**      | ✅ Complete | Download + base64-encode images, Go HTML template + CSS print media, chromedp PrintToPDF, embedded OpenSans font, HTML + PDF output | Run command, get HTML + PDF |
-| **V3: Translation**     | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped | Run with --translate de, get German PDF |
-| **V4: Quality Validation** | ⏳ Pending | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures | Run command, see validation pass/warnings |
-| **V5: Config + Query ID** | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.*.js bundle → flag → hardcoded, helpful auth error | Config file replaces flags, query ID auto-resolves |
+| Slice                      | Status     | Highlights                                                                                                                                            | Demo                                               |
+| :------------------------- | :--------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
+| **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                              | Run command, see article summary in terminal       |
+| **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, Go HTML template + CSS print media, chromedp PrintToPDF, embedded OpenSans font, HTML + PDF output                   | Run command, get HTML + PDF                        |
+| **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped        | Run with --translate de, get German PDF            |
+| **V4: Quality Validation** | ⏳ Pending  | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures | Run command, see validation pass/warnings          |
+| **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |

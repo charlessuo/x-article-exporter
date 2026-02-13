@@ -10,15 +10,33 @@ Evaluate translation service options for a Go CLI tool. Understand cost, quality
 
 ## Questions & Answers
 
-| #         | Question                                                     | Answer                                                                                                                                                                                                                                                 |
-| --------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **A2-Q1** | Which service has the best quality for European languages?   | **DeepL** is best-in-class for European languages (DE, FR, ES, IT). Claude 3.5 ranked #1 in WMT24 for 9/11 language pairs. Google is very good but DeepL consistently edges it out. LibreTranslate quality is poor — not suitable for polished output. |
-| **A2-Q2** | Which service best preserves formatting / skips code blocks? | **DeepL** — native `tag_handling: "xml"` with `ignore_tags` param lets you mark code/LaTeX as untranslatable. LLMs can be prompt-instructed to skip code. Google has best-effort HTML handling but no `ignore_tags` equivalent.                        |
-| **A2-Q3** | What's the cost per article (~5K words / ~30K chars)?        | DeepL Free: $0 (500K chars/month ≈ 16 articles). DeepL Pro: ~$0.75. Google NMT: ~$0.60. Claude Haiku: ~$0.05. GPT-4o-mini: ~$0.006. LibreTranslate: free (self-hosted).                                                                                |
-| **A2-Q4** | Is there an official Go SDK?                                 | DeepL: **No** (community libs only, but REST API is trivial). Google: **Yes** (`cloud.google.com/go/translate/apiv3`). Claude: **Yes** (`anthropic-sdk-go`). OpenAI: **Yes** (`openai-go`).                                                            |
-| **A2-Q5** | What's the latency for a full article?                       | DeepL: 1-3s. Google NMT: 1-3s. Claude Haiku: 3-8s. GPT-4o-mini: 3-8s. LibreTranslate: 2-5s (hardware-dependent).                                                                                                                                       |
-| **A2-Q6** | Is round-trip translation viable for quality validation?     | **Research says no.** EAMT 2020 paper found BLEU scores on round-trip text don't correlate with actual translation quality. If used at all, embedding-based similarity (SBERT cosine ≥ 0.85) is better than BLEU. Doubles cost and latency.            |
-| **A2-Q7** | Paragraph-level vs full-document translation?                | Document-level is better (contextual coherence, consistent terminology). Recommended: concatenate all translatable blocks into one request with XML/HTML tags preserving structure. Split only if exceeding request size limits.                       |
+**A2-Q1: Which service has the best quality for European languages?**
+
+**DeepL** is best-in-class for European languages (DE, FR, ES, IT). Claude 3.5 ranked #1 in WMT24 for 9/11 language pairs. Google is very good but DeepL consistently edges it out. LibreTranslate quality is poor — not suitable for polished output.
+
+**A2-Q2: Which service best preserves formatting / skips code blocks?**
+
+**DeepL** — native `tag_handling: "xml"` with `ignore_tags` param lets you mark code/LaTeX as untranslatable. LLMs can be prompt-instructed to skip code. Google has best-effort HTML handling but no `ignore_tags` equivalent.
+
+**A2-Q3: What's the cost per article (~5K words / ~30K chars)?**
+
+DeepL Free: $0 (500K chars/month ≈ 16 articles). DeepL Pro: ~$0.75. Google NMT: ~$0.60. Claude Haiku: ~$0.05. GPT-4o-mini: ~$0.006. LibreTranslate: free (self-hosted).
+
+**A2-Q4: Is there an official Go SDK?**
+
+DeepL: **No** (community libs only, but REST API is trivial). Google: **Yes** (`cloud.google.com/go/translate/apiv3`). Claude: **Yes** (`anthropic-sdk-go`). OpenAI: **Yes** (`openai-go`).
+
+**A2-Q5: What's the latency for a full article?**
+
+DeepL: 1-3s. Google NMT: 1-3s. Claude Haiku: 3-8s. GPT-4o-mini: 3-8s. LibreTranslate: 2-5s (hardware-dependent).
+
+**A2-Q6: Is round-trip translation viable for quality validation?**
+
+**Research says no.** EAMT 2020 paper found BLEU scores on round-trip text don't correlate with actual translation quality. If used at all, embedding-based similarity (SBERT cosine ≥ 0.85) is better than BLEU. Doubles cost and latency.
+
+**A2-Q7: Paragraph-level vs full-document translation?**
+
+Document-level is better (contextual coherence, consistent terminology). Recommended: concatenate all translatable blocks into one request with XML/HTML tags preserving structure. Split only if exceeding request size limits.
 
 ## Comparison
 

@@ -10,17 +10,41 @@ Understand the technical structure of X articles, available APIs, auth requireme
 
 ## Questions & Answers
 
-| #         | Question                                                | Answer                                                                                                                                                                                                                                                                               |
-| --------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **A1-Q1** | What are X articles and how do they differ from tweets? | Distinct entity type. Up to ~100k chars, rich formatting (headings, lists, code blocks, LaTeX, images, embedded tweets). URL: `https://x.com/i/article/{snowflake_id}`. Require Premium subscription to create. Separate from note tweets (long posts up to 25k chars).              |
-| **A1-Q2** | Is article content in the initial HTML response?        | **No.** X is a React SPA. The HTML is a shell with empty `articleEntities` in `__INITIAL_STATE__`. Zero content server-side. Bot user agents get a 404 page. No og:title, no og:description, no meta tags with content.                                                              |
-| **A1-Q3** | Does the official X API v2 support articles?            | **No.** No article endpoints exist. The API has `note_tweet` fields on tweets for long posts, but articles are a completely separate entity type with no public API coverage.                                                                                                        |
-| **A1-Q4** | What internal APIs exist for articles?                  | GraphQL API at `x.com/i/api/graphql/{queryId}/{operationName}`. Key endpoint: **`TweetResultByRestId`** (GET, fetches article content via its parent tweet ID). Also: `UserArticlesTweets`, `ArticleTimeline`, `ArticleEntitiesSlice`. **V1 finding:** articles are fetched as tweets — the article URL's snowflake ID is a tweet ID, and the article content is nested inside the tweet response. |
-| **A1-Q5** | What authentication is required?                        | **Mandatory.** Cookie-based auth (`auth_token` + `ct0` cookies) from a real browser session is the most reliable. Guest tokens are heavily nerfed and likely insufficient for articles. Required headers: `Authorization: Bearer {hardcoded_token}`, `X-Csrf-Token: {ct0}`, cookies. |
-| **A1-Q6** | How stable are the GraphQL endpoints?                   | **Unstable.** Query IDs (`queryId` in the URL) rotate every 2-4 weeks. Must be extracted from X's JS bundles dynamically or updated manually. Feature flags must also be sent with requests.                                                                                         |
-| **A1-Q7** | What does the article content model look like?          | Block-based rich text (similar to ProseMirror/Slate). Up to 10,000 blocks, 25 media items, 100 char title. Supports: headings, paragraphs, bold/italic/strikethrough, bulleted/numbered lists, block quotes, code blocks, LaTeX, embedded tweets.                                    |
-| **A1-Q8** | Do any existing tools/libraries handle articles?        | **No.** No tool in any language has dedicated article support. Go's `imperatrona/twitter-scraper` handles tweets and note tweets but not the article entity type. Would need to be built from scratch.                                                                               |
-| **A1-Q9** | What are the ToS and rate limit implications?           | X's ToS (Sept 2023) explicitly bans scraping without written consent. Internal GraphQL: ~300 req/hr, datacenter IPs banned. However, *X v. Bright Data* ruling suggests ToS scraping bans may not be fully enforceable. Personal/low-volume use is low risk.                         |
+**A1-Q1: What are X articles and how do they differ from tweets?**
+
+Distinct entity type. Up to ~100k chars, rich formatting (headings, lists, code blocks, LaTeX, images, embedded tweets). URL: `https://x.com/i/article/{snowflake_id}`. Require Premium subscription to create. Separate from note tweets (long posts up to 25k chars).
+
+**A1-Q2: Is article content in the initial HTML response?**
+
+**No.** X is a React SPA. The HTML is a shell with empty `articleEntities` in `__INITIAL_STATE__`. Zero content server-side. Bot user agents get a 404 page. No og:title, no og:description, no meta tags with content.
+
+**A1-Q3: Does the official X API v2 support articles?**
+
+**No.** No article endpoints exist. The API has `note_tweet` fields on tweets for long posts, but articles are a completely separate entity type with no public API coverage.
+
+**A1-Q4: What internal APIs exist for articles?**
+
+GraphQL API at `x.com/i/api/graphql/{queryId}/{operationName}`. Key endpoint: **`TweetResultByRestId`** (GET, fetches article content via its parent tweet ID). Also: `UserArticlesTweets`, `ArticleTimeline`, `ArticleEntitiesSlice`. **V1 finding:** articles are fetched as tweets — the article URL's snowflake ID is a tweet ID, and the article content is nested inside the tweet response.
+
+**A1-Q5: What authentication is required?**
+
+**Mandatory.** Cookie-based auth (`auth_token` + `ct0` cookies) from a real browser session is the most reliable. Guest tokens are heavily nerfed and likely insufficient for articles. Required headers: `Authorization: Bearer {hardcoded_token}`, `X-Csrf-Token: {ct0}`, cookies.
+
+**A1-Q6: How stable are the GraphQL endpoints?**
+
+**Unstable.** Query IDs (`queryId` in the URL) rotate every 2-4 weeks. Must be extracted from X's JS bundles dynamically or updated manually. Feature flags must also be sent with requests.
+
+**A1-Q7: What does the article content model look like?**
+
+Block-based rich text (similar to ProseMirror/Slate). Up to 10,000 blocks, 25 media items, 100 char title. Supports: headings, paragraphs, bold/italic/strikethrough, bulleted/numbered lists, block quotes, code blocks, LaTeX, embedded tweets.
+
+**A1-Q8: Do any existing tools/libraries handle articles?**
+
+**No.** No tool in any language has dedicated article support. Go's `imperatrona/twitter-scraper` handles tweets and note tweets but not the article entity type. Would need to be built from scratch.
+
+**A1-Q9: What are the ToS and rate limit implications?**
+
+X's ToS (Sept 2023) explicitly bans scraping without written consent. Internal GraphQL: ~300 req/hr, datacenter IPs banned. However, *X v. Bright Data* ruling suggests ToS scraping bans may not be fully enforceable. Personal/low-volume use is low risk.
 
 ## Key Findings
 

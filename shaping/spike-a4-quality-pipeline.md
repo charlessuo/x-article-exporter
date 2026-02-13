@@ -10,14 +10,29 @@ Design a validation pipeline with specific Go libraries, thresholds, and a strat
 
 ## Questions & Answers
 
-| #         | Question                                                     | Answer                                                                                                                                                                                                                                                                  |
-| --------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A4-Q1** | What Go libraries can extract text from PDFs?                | **`pdfcpu`** (Apache 2.0): `ValidateFile()`, `PageCountFile()`, `ExtractImagesRaw()`, `PDFInfo()`. **`ledongthuc/pdf`** (BSD-3): `GetPlainText()`, `GetStyledTexts()` with font/position info. Both pure Go, no CGo. `unipdf` is most accurate but commercial (AGPL/$). |
-| **A4-Q2** | Can we count images in a generated PDF?                      | **Yes.** `pdfcpu.ExtractImagesRaw()` returns `[]map[int]model.Image` — image objects per page. Count them and compare against expected count from article extraction.                                                                                                   |
-| **A4-Q3** | How accurate is PDF text extraction for self-generated PDFs? | **Very accurate (95-99%).** Since we control the PDF renderer (chromedp), the layout is single-column with simple formatting. Text extraction fidelity is high — much better than arbitrary third-party PDFs.                                                           |
-| **A4-Q4** | Is visual regression testing worth it?                       | **No, not initially.** High complexity (CGo dependency for `go-fitz` or external `pdftoppm`), moderate false positive rate (font rendering differs across OS). Structural checks catch 95% of real problems. Defer to later if layout stability becomes a concern.      |
-| **A4-Q5** | How to handle golden file testing for PDFs?                  | **Store metadata snapshots (JSON), not PDFs.** Golden JSON files contain expected page count range, image count, word count range, title, must-contain phrases. For deterministic PDFs (if using fpdf): `SetCreationDate()` + `SetCatalogSort()`.                       |
-| **A4-Q6** | What thresholds avoid false positives?                       | Word count: ±15% (headers/footers/page numbers add text). Translation length: ±30%. Image count: exact match. Page count: within expected range.                                                                                                                        |
+**A4-Q1: What Go libraries can extract text from PDFs?**
+
+**`pdfcpu`** (Apache 2.0): `ValidateFile()`, `PageCountFile()`, `ExtractImagesRaw()`, `PDFInfo()`. **`ledongthuc/pdf`** (BSD-3): `GetPlainText()`, `GetStyledTexts()` with font/position info. Both pure Go, no CGo. `unipdf` is most accurate but commercial (AGPL/$).
+
+**A4-Q2: Can we count images in a generated PDF?**
+
+**Yes.** `pdfcpu.ExtractImagesRaw()` returns `[]map[int]model.Image` — image objects per page. Count them and compare against expected count from article extraction.
+
+**A4-Q3: How accurate is PDF text extraction for self-generated PDFs?**
+
+**Very accurate (95-99%).** Since we control the PDF renderer (chromedp), the layout is single-column with simple formatting. Text extraction fidelity is high — much better than arbitrary third-party PDFs.
+
+**A4-Q4: Is visual regression testing worth it?**
+
+**No, not initially.** High complexity (CGo dependency for `go-fitz` or external `pdftoppm`), moderate false positive rate (font rendering differs across OS). Structural checks catch 95% of real problems. Defer to later if layout stability becomes a concern.
+
+**A4-Q5: How to handle golden file testing for PDFs?**
+
+**Store metadata snapshots (JSON), not PDFs.** Golden JSON files contain expected page count range, image count, word count range, title, must-contain phrases. For deterministic PDFs (if using fpdf): `SetCreationDate()` + `SetCatalogSort()`.
+
+**A4-Q6: What thresholds avoid false positives?**
+
+Word count: ±15% (headers/footers/page numbers add text). Translation length: ±30%. Image count: exact match. Page count: within expected range.
 
 ## Recommended Pipeline: Two Tiers
 
