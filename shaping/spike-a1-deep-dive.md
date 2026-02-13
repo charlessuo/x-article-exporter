@@ -104,9 +104,7 @@ The Draft.js raw content state format is:
         { "offset": 27, "length": 4, "style": "BOLD" },
         { "offset": 36, "length": 6, "style": "ITALIC" }
       ],
-      "entityRanges": [
-        { "offset": 10, "length": 9, "key": 0 }
-      ],
+      "entityRanges": [{ "offset": 10, "length": 9, "key": 0 }],
       "data": {}
     },
     {
@@ -133,9 +131,7 @@ The Draft.js raw content state format is:
       "type": "atomic",
       "depth": 0,
       "inlineStyleRanges": [],
-      "entityRanges": [
-        { "offset": 0, "length": 1, "key": 1 }
-      ],
+      "entityRanges": [{ "offset": 0, "length": 1, "key": 1 }],
       "data": {}
     },
     {
@@ -179,27 +175,27 @@ The Draft.js raw content state format is:
 
 Standard Draft.js block types (confirmed by Draft.js documentation):
 
-| Block Type               | HTML Equivalent | Used In Articles |
-|--------------------------|-----------------|------------------|
-| `unstyled`               | `<p>`           | Yes (paragraphs) |
-| `header-one`             | `<h1>`          | Yes              |
-| `header-two`             | `<h2>`          | Yes              |
-| `header-three`           | `<h3>`          | Yes              |
-| `header-four`            | `<h4>`          | Likely           |
-| `header-five`            | `<h5>`          | Unlikely         |
-| `header-six`             | `<h6>`          | Unlikely         |
-| `unordered-list-item`    | `<li>` (ul)     | Yes              |
-| `ordered-list-item`      | `<li>` (ol)     | Yes              |
-| `blockquote`             | `<blockquote>`  | Yes              |
-| `code-block`             | `<pre>`         | Yes              |
-| `atomic`                 | `<figure>`      | Yes (media/embeds)|
+| Block Type            | HTML Equivalent | Used In Articles   |
+| --------------------- | --------------- | ------------------ |
+| `unstyled`            | `<p>`           | Yes (paragraphs)   |
+| `header-one`          | `<h1>`          | Yes                |
+| `header-two`          | `<h2>`          | Yes                |
+| `header-three`        | `<h3>`          | Yes                |
+| `header-four`         | `<h4>`          | Likely             |
+| `header-five`         | `<h5>`          | Unlikely           |
+| `header-six`          | `<h6>`          | Unlikely           |
+| `unordered-list-item` | `<li>` (ul)     | Yes                |
+| `ordered-list-item`   | `<li>` (ol)     | Yes                |
+| `blockquote`          | `<blockquote>`  | Yes                |
+| `code-block`          | `<pre>`         | Yes                |
+| `atomic`              | `<figure>`      | Yes (media/embeds) |
 
 ### Inline formatting (inlineStyleRanges)
 
 Draft.js default inline styles:
 
 | Style           | Meaning       |
-|-----------------|---------------|
+| --------------- | ------------- |
 | `BOLD`          | Bold text     |
 | `ITALIC`        | Italic text   |
 | `UNDERLINE`     | Underlined    |
@@ -214,14 +210,14 @@ Each range is `{ "offset": <int>, "length": <int>, "style": "<STYLE>" }`. Multip
 
 Entities are referenced by key in `entityRanges` and defined in `entityMap`. **V1 finding:** In the `TweetResultByRestId` response, `entityMap` is an **array of `{key, value}` pairs**, not a standard Draft.js map. Entity types observed in real articles:
 
-| Entity Type  | Mutability   | Data Fields                                    | Notes                              |
-|--------------|--------------|------------------------------------------------|------------------------------------|
-| `LINK`       | `MUTABLE`    | `url`                                          | Hyperlinks                         |
-| `MEDIA`      | `Immutable`  | `src`                                          | Images — used with `atomic` blocks |
-| `TWEMOJI`    | `IMMUTABLE`  | (emoji data)                                   | Twitter emoji entities             |
-| `MARKDOWN`   | `IMMUTABLE`  | (formatting data)                              | Markdown-style formatting          |
-| `MENTION`    | `IMMUTABLE`  | `user_id`, `screen_name`                       | @mentions (Twitter-specific)       |
-| `HASHTAG`    | `IMMUTABLE`  | `tag`                                          | #hashtags (Twitter-specific)       |
+| Entity Type | Mutability  | Data Fields              | Notes                              |
+| ----------- | ----------- | ------------------------ | ---------------------------------- |
+| `LINK`      | `MUTABLE`   | `url`                    | Hyperlinks                         |
+| `MEDIA`     | `Immutable` | `src`                    | Images — used with `atomic` blocks |
+| `TWEMOJI`   | `IMMUTABLE` | (emoji data)             | Twitter emoji entities             |
+| `MARKDOWN`  | `IMMUTABLE` | (formatting data)        | Markdown-style formatting          |
+| `MENTION`   | `IMMUTABLE` | `user_id`, `screen_name` | @mentions (Twitter-specific)       |
+| `HASHTAG`   | `IMMUTABLE` | `tag`                    | #hashtags (Twitter-specific)       |
 
 **V1 finding:** Images use entity type `MEDIA` (not `IMAGE`). Mutability values use mixed casing (`Immutable` vs `IMMUTABLE`). The `ImageCount()` method checks for both `IMAGE` and `MEDIA` types.
 
@@ -286,19 +282,22 @@ From the Zenn.dev reverse engineering documentation, you can extract all query I
 
 ```javascript
 // Step 1: Get the API webpack chunk
-let apiChunk = window.webpackChunk_twitter_responsive_web
-  .filter(e => e[0][0] == "api")[0];
+let apiChunk = window.webpackChunk_twitter_responsive_web.filter(
+  (e) => e[0][0] == "api",
+)[0];
 
 // Step 2: Execute each module to get its exports
 let modules = {};
 let operations = {};
-Object.keys(apiChunk[1]).forEach(k => {
+Object.keys(apiChunk[1]).forEach((k) => {
   modules[k] = {};
-  try { apiChunk[1][k](modules[k]); } catch(e) {}
+  try {
+    apiChunk[1][k](modules[k]);
+  } catch (e) {}
 });
 
 // Step 3: Collect all GraphQL operations
-Object.keys(modules).forEach(k => {
+Object.keys(modules).forEach((k) => {
   if (modules[k].exports && modules[k].exports.queryId) {
     operations[modules[k].exports.operationName] = modules[k].exports;
   }
@@ -339,16 +338,17 @@ pattern := `queryId:"([^"]+)"[^}]*operationName:"([^"]+)"`
 
 ### How existing scrapers handle this
 
-| Library | Language | Approach |
-|---------|----------|----------|
-| **twitter-api-client** (trevorhobenshield) | Python | **Hardcoded** query IDs in `constants.py`, manually updated |
-| **twikit** (d60) | Python | **Hardcoded** query IDs in endpoint URL constants, manually updated |
-| **twscrape** (vladkens) | Python | **Hardcoded** query IDs, manually updated |
-| **yt-dlp** | Python | **Hardcoded** in `_GRAPHQL_ENDPOINT` class attribute |
-| **fa0311/twitter-openapi** | Spec | Uses `tools/build.py` to **auto-generate** the spec (method unclear, likely involves bundle parsing) |
-| **imperatrona/twitter-scraper** | Go | **Hardcoded** query IDs |
+| Library                                    | Language | Approach                                                                                             |
+| ------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------- |
+| **twitter-api-client** (trevorhobenshield) | Python   | **Hardcoded** query IDs in `constants.py`, manually updated                                          |
+| **twikit** (d60)                           | Python   | **Hardcoded** query IDs in endpoint URL constants, manually updated                                  |
+| **twscrape** (vladkens)                    | Python   | **Hardcoded** query IDs, manually updated                                                            |
+| **yt-dlp**                                 | Python   | **Hardcoded** in `_GRAPHQL_ENDPOINT` class attribute                                                 |
+| **fa0311/twitter-openapi**                 | Spec     | Uses `tools/build.py` to **auto-generate** the spec (method unclear, likely involves bundle parsing) |
+| **imperatrona/twitter-scraper**            | Go       | **Hardcoded** query IDs                                                                              |
 
 **Key insight**: Every major scraper library hardcodes query IDs and updates them manually. None dynamically extract from JS bundles at runtime. This is a strong signal that:
+
 - Dynamic extraction is harder than it sounds (minification changes, bundle URL changes)
 - Manual updates every 2-4 weeks are the pragmatic approach most projects take
 - Our tool should support BOTH: try dynamic extraction, fall back to hardcoded
@@ -394,6 +394,7 @@ GET https://x.com/i/api/graphql/{queryId}/TweetResultByRestId?variables={...}&fe
 ```
 
 Where:
+
 - `{queryId}` is the current query ID extracted from the JS bundle (e.g., `d6YKjvQ920F-D4Y1PruO-A` -- this rotates every 2-4 weeks)
 - `variables`, `features`, and `fieldToggles` are URL-encoded JSON strings
 
@@ -424,6 +425,7 @@ AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16
 ```
 
 This is X's web client bearer token. It is:
+
 - **Hardcoded** in X's JavaScript frontend (in the `main.js` bundle)
 - **The same for all users** -- it identifies the X web client application, not a specific user
 - **Long-lived** -- it has been the same token for years (confirmed in a 2023 Hacker News discussion and still used in 2025+ libraries)
@@ -530,25 +532,25 @@ curl -s -G 'https://x.com/i/api/graphql/d6YKjvQ920F-D4Y1PruO-A/TweetResultByRest
 
 ## Summary: Confidence Matrix
 
-| Item | Confidence | Source(s) |
-|------|------------|-----------|
-| Operation is `TweetResultByRestId` (articles are tweets) | VERIFIED | V1 implementation with real API |
-| Variables: `{"tweetId": "<snowflake_id>", ...}` | VERIFIED | V1 implementation |
-| Bearer token value | VERIFIED | V1 implementation (same token used by all libraries) |
-| Required HTTP headers | VERIFIED | V1 implementation |
-| Feature flags dict (~32 boolean flags) | VERIFIED | V1 implementation (from browser dev tools) |
-| `fieldToggles.withArticleRichContentState: true` unlocks body | VERIFIED | V1 implementation |
-| Article body field is `content_state` (not `rich_content_state`) | VERIFIED | V1 implementation |
-| Article body is Draft.js `RawDraftContentState` format | VERIFIED | V1 implementation |
-| Entity map is array of `{key, value}` pairs (not a map) | VERIFIED | V1 implementation |
-| Entity types: MEDIA (not IMAGE), LINK, TWEMOJI, MARKDOWN | VERIFIED | V1 implementation |
-| Author info from tweet wrapper `core.user_results` | VERIFIED | V1 implementation |
-| `x-client-transaction-id` header NOT required | VERIFIED | V1 implementation |
-| Draft.js block types and inline styles | HIGH | Draft.js official docs |
-| Query IDs are in webpack `api` chunk | HIGH | Zenn.dev reverse engineering doc |
-| Browser console extraction of query IDs | HIGH | Documented and tested approach |
-| Regex extraction from minified JS | MEDIUM | Concept is sound; exact regex needs tuning |
-| All scrapers hardcode query IDs | HIGH | Verified for 5 major libraries |
+| Item                                                             | Confidence | Source(s)                                            |
+| ---------------------------------------------------------------- | ---------- | ---------------------------------------------------- |
+| Operation is `TweetResultByRestId` (articles are tweets)         | VERIFIED   | V1 implementation with real API                      |
+| Variables: `{"tweetId": "<snowflake_id>", ...}`                  | VERIFIED   | V1 implementation                                    |
+| Bearer token value                                               | VERIFIED   | V1 implementation (same token used by all libraries) |
+| Required HTTP headers                                            | VERIFIED   | V1 implementation                                    |
+| Feature flags dict (~32 boolean flags)                           | VERIFIED   | V1 implementation (from browser dev tools)           |
+| `fieldToggles.withArticleRichContentState: true` unlocks body    | VERIFIED   | V1 implementation                                    |
+| Article body field is `content_state` (not `rich_content_state`) | VERIFIED   | V1 implementation                                    |
+| Article body is Draft.js `RawDraftContentState` format           | VERIFIED   | V1 implementation                                    |
+| Entity map is array of `{key, value}` pairs (not a map)          | VERIFIED   | V1 implementation                                    |
+| Entity types: MEDIA (not IMAGE), LINK, TWEMOJI, MARKDOWN         | VERIFIED   | V1 implementation                                    |
+| Author info from tweet wrapper `core.user_results`               | VERIFIED   | V1 implementation                                    |
+| `x-client-transaction-id` header NOT required                    | VERIFIED   | V1 implementation                                    |
+| Draft.js block types and inline styles                           | HIGH       | Draft.js official docs                               |
+| Query IDs are in webpack `api` chunk                             | HIGH       | Zenn.dev reverse engineering doc                     |
+| Browser console extraction of query IDs                          | HIGH       | Documented and tested approach                       |
+| Regex extraction from minified JS                                | MEDIUM     | Concept is sound; exact regex needs tuning           |
+| All scrapers hardcode query IDs                                  | HIGH       | Verified for 5 major libraries                       |
 
 ---
 
@@ -556,14 +558,14 @@ curl -s -G 'https://x.com/i/api/graphql/d6YKjvQ920F-D4Y1PruO-A/TweetResultByRest
 
 All unknowns have been resolved by V1 implementation. Key discoveries vs. initial research:
 
-| Item | Research prediction | V1 reality |
-|------|-------------------|------------|
-| Operation | `TwitterArticleByRestId` | `TweetResultByRestId` (articles are tweets) |
-| Variable | `{"rest_id": "..."}` | `{"tweetId": "...", ...}` |
-| Response path | `data.article.article_results.result` | `data.tweetResult.result.article.article_results.result` |
-| Content field | `rich_content_state` (guessed) | `content_state` |
-| Entity map | Standard Draft.js map | Array of `{key, value}` pairs |
-| Image entity type | `IMAGE` | `MEDIA` |
-| Author info | Assumed in article result | In tweet wrapper at `core.user_results` |
+| Item              | Research prediction                   | V1 reality                                               |
+| ----------------- | ------------------------------------- | -------------------------------------------------------- |
+| Operation         | `TwitterArticleByRestId`              | `TweetResultByRestId` (articles are tweets)              |
+| Variable          | `{"rest_id": "..."}`                  | `{"tweetId": "...", ...}`                                |
+| Response path     | `data.article.article_results.result` | `data.tweetResult.result.article.article_results.result` |
+| Content field     | `rich_content_state` (guessed)        | `content_state`                                          |
+| Entity map        | Standard Draft.js map                 | Array of `{key, value}` pairs                            |
+| Image entity type | `IMAGE`                               | `MEDIA`                                                  |
+| Author info       | Assumed in article result             | In tweet wrapper at `core.user_results`                  |
 
 The library-based research was directionally correct (GraphQL + Draft.js + cookie auth) but wrong on specifics. The browser dev tools `Copy as cURL` approach resolved everything in one step.

@@ -9,11 +9,13 @@
 ## Frame
 
 ### Problem
+
 - Browser print of X articles produces unreadable PDFs (broken formatting, missing content)
 - X requires an account to read content — can't just share a link with people who don't have one
 - Some recipients don't read English well enough to consume articles in the original language
 
 ### Outcome
+
 - Can produce a well-formatted, readable PDF from any X article
 - Can share articles with people who don't have X accounts
 - Can translate articles before export so non-English readers can consume them
@@ -50,6 +52,7 @@
 See [spike-a1-content-extraction.md](./spike-a1-content-extraction.md).
 
 **Key findings:**
+
 - X articles are 100% client-side rendered — no content in HTML
 - Internal GraphQL API is the only path to article content
 - `TweetResultByRestId` endpoint fetches article content via the parent tweet's snowflake ID
@@ -60,6 +63,7 @@ See [spike-a1-content-extraction.md](./spike-a1-content-extraction.md).
 - GraphQL preferred over headless browser: faster, structured data, better for translation + validation
 
 **A1 deep dive completed** — see [spike-a1-deep-dive.md](./spike-a1-deep-dive.md) for resolution of three unknowns:
+
 - **Response format**: Operation is `TweetResultByRestId` — articles are fetched as tweets. Response path: `data.tweetResult.result.article.article_results.result`. Body content is Draft.js `RawDraftContentState` in `content_state` field, unlocked via `fieldToggles.withArticleRichContentState: true`. Entity map is an array of `{key, value}` pairs. Author info from tweet wrapper.
 - **Query ID extraction**: IDs are in webpack `api` chunk. All major scrapers hardcode them. Regex extraction from JS bundle is feasible. Recommended: dynamic extraction with 24h cache + manual fallback.
 - **Request format**: GET request with URL-encoded `variables`, `features`, `fieldToggles` params. Bearer token, headers, cookie format, and feature flags are fully documented.
@@ -71,6 +75,7 @@ See [spike-a1-content-extraction.md](./spike-a1-content-extraction.md).
 See [spike-a2-translation.md](./spike-a2-translation.md).
 
 **Key findings:**
+
 - DeepL is best-in-class for European languages and has native `ignore_tags` for code/LaTeX
 - Free tier (500K chars/month) covers ~16 articles/month; Pro is ~$0.75/article
 - No official Go SDK but REST API is trivial (~100 LOC custom client)
@@ -85,6 +90,7 @@ See [spike-a2-translation.md](./spike-a2-translation.md).
 See [spike-a3-pdf-rendering.md](./spike-a3-pdf-rendering.md).
 
 **Key findings:**
+
 - wkhtmltopdf is dead (archived 2024, deprecated QtWebKit)
 - Go PDF libraries (gofpdf/fpdf/maroto) require ~1000+ LOC for rich article layout — too complex
 - pandoc + typst is good quality but two external dependencies
@@ -99,6 +105,7 @@ See [spike-a3-pdf-rendering.md](./spike-a3-pdf-rendering.md).
 See [spike-a4-quality-pipeline.md](./spike-a4-quality-pipeline.md).
 
 **Key findings:**
+
 - Two-tier validation: per-export (<200ms) + CI (golden fixtures)
 - Per-export: `pdfcpu.ValidateFile()`, page count, image count match, title/author/date present, word count ±15%
 - CI: golden metadata snapshots (JSON), must-contain phrases, empty page detection, translation fixtures
@@ -114,15 +121,16 @@ See [spike-a4-quality-pipeline.md](./spike-a4-quality-pipeline.md).
 
 | Req | Requirement                                                                                   | Status    | A   |
 | --- | --------------------------------------------------------------------------------------------- | --------- | --- |
-| R0  | Produce a readable, well-formatted PDF from an X article URL                                  | Core goal | ✅   |
-| R1  | Extract full article content from X (text, images, author, date)                              | Must-have | ✅   |
-| R2  | Translate article text to a target language before PDF generation                             | Must-have | ✅   |
-| R3  | PDF is shareable with people who have no X account (self-contained)                           | Must-have | ✅   |
-| R4  | Automated quality validation — can judge PDF correctness without manual inspection            | Must-have | ✅   |
-| R5  | Handle X authentication via config file with CLI flag override (`auth_token` + `ct0` cookies) | Must-have | ✅   |
-| R6  | Translation is opt-in per export via explicit `--translate <lang>` CLI flag                   | Must-have | ✅   |
+| R0  | Produce a readable, well-formatted PDF from an X article URL                                  | Core goal | ✅  |
+| R1  | Extract full article content from X (text, images, author, date)                              | Must-have | ✅  |
+| R2  | Translate article text to a target language before PDF generation                             | Must-have | ✅  |
+| R3  | PDF is shareable with people who have no X account (self-contained)                           | Must-have | ✅  |
+| R4  | Automated quality validation — can judge PDF correctness without manual inspection            | Must-have | ✅  |
+| R5  | Handle X authentication via config file with CLI flag override (`auth_token` + `ct0` cookies) | Must-have | ✅  |
+| R6  | Translation is opt-in per export via explicit `--translate <lang>` CLI flag                   | Must-have | ✅  |
 
 **Notes:**
+
 - R0 ✅: A1 (GraphQL extraction → Draft.js blocks) + A3 (chromedp HTML→PDF) form the complete pipeline
 - R1 ✅: `TweetResultByRestId` with `withArticleRichContentState: true` returns full content as Draft.js blocks in `content_state` field (title, body, images, entities)
 - R2 ✅: DeepL API with XML tag handling, `ignore_tags` for code/LaTeX, full-document translation

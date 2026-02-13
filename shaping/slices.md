@@ -17,6 +17,7 @@
 **Demo:** `x-article-exporter https://x.com/i/article/123456 --auth-token abc --ct0 xyz` → prints article title, author, date, block count, image count to terminal.
 
 **Notes:**
+
 - Query ID is hardcoded (will rotate in 2-4 weeks — acceptable for first slice)
 - `--auth-token` and `--ct0` are required flags (no config file yet)
 - No PDF output — terminal summary only
@@ -45,6 +46,7 @@
 **Demo:** `x-article-exporter https://x.com/i/article/123456 --auth-token abc --ct0 xyz --output ./article.pdf` → writes a well-formatted, self-contained PDF to disk.
 
 **Notes:**
+
 - Images downloaded and base64-embedded in HTML (MEDIA entities resolved via `media_entities[]`)
 - Go HTML template with CSS print media, embedded OpenSans variable font
 - Block grouping: consecutive list items → `<ul>`/`<ol>`, code blocks → `<pre><code>`, blockquotes → `<blockquote>`
@@ -71,6 +73,7 @@
 **Demo:** `x-article-exporter https://x.com/i/article/123456 --auth-token abc --ct0 xyz --translate de` → PDF in German with code blocks and images preserved unchanged.
 
 **Notes:**
+
 - `--translate <lang>` and `--ollama-model <model>` flags added
 - Local Ollama with translategemma:12b (purpose-built translation model, 55 languages, no API key needed)
 - Batch translation: 8 blocks per request using `[N]` delimiters to avoid collision with numbered content
@@ -80,6 +83,7 @@
 - ~6 min for a full 70-block article on M3/32GB
 
 **Nice-to-have ideas:**
+
 - **Image text translation**: Images with text (screenshots, diagrams with labels) are not translated. Investigate OCR + overlay or image regeneration approaches. Spike needed to assess feasibility and quality.
 
 **New affordances:**
@@ -96,6 +100,7 @@
 **Demo:** `x-article-exporter ...` → after PDF render, validation output: "PDF valid. 4 pages. 3 images (expected 3). Title found. Author found. Word count: 1847 (expected ~1800). OK."
 
 **Notes:**
+
 - Runs automatically after every `printToPDF` (<200ms overhead)
 - `pdfcpu`: structural integrity, page count, image count
 - `ledongthuc/pdf`: text extraction for title/author present, word count ±15%
@@ -104,6 +109,7 @@
 - Soft warnings (word count slightly off) → U3 (exit 0)
 
 **Nice-to-have ideas (from V2 E2E feedback):**
+
 - **Per-article settings JSON**: A small JSON file alongside the article that overrides rendering settings (e.g., image max-width, page break locations, font size tweaks) for per-article taste adjustments. Each article has unique "sharp edges" that only manual tweaks can fix.
 - **Golden file testing**: Use the HTML output (pre-PDF) as golden files for regression/integration tests. The HTML is clean and deterministic, making it ideal for diffing.
 
@@ -122,6 +128,7 @@
 **Demo:** Create `~/.config/x-article-exporter/config.yaml` with `auth_token` and `ct0`. Run `x-article-exporter https://x.com/i/article/123456` without auth flags — works. Query ID auto-resolves from X's JS bundles, cached for 24h.
 
 **Notes:**
+
 - YAML config file at `~/.config/x-article-exporter/config.yaml` (gopkg.in/yaml.v3)
 - Fields: `auth_token`, `ct0`, `ollama_model` — only persistent settings, per-invocation args stay CLI-only
 - CLI flags override config file values (detected via `flag.FlagSet.Visit`)
@@ -137,7 +144,7 @@
 | --- | ----- | --------- | ----------------------------------------------------------------------- | ------- | ----------- | ---------- |
 | N1  | P2    | config    | `ParseFlags()` — **extended**: reads config.yaml + merges with flags    | call    | reads P6    | → S1       |
 | N3  | P2    | extract   | `ResolveQueryID(ctx, flagOverride)` — cache → bundle → flag → hardcoded | call    | → N4 (miss) | → N5       |
-| N4  | P3    | extract   | `fetchQueryIDFromBundle()` — GET x.com → find main.*.js → regex         | call    | —           | → S2, → N3 |
+| N4  | P3    | extract   | `fetchQueryIDFromBundle()` — GET x.com → find main.\*.js → regex        | call    | —           | → S2, → N3 |
 | S2  | P6    | —         | `queryIDCache` — 24h TTL, `~/.cache/x-article-exporter/query-id.json`   | store   | —           | → N3       |
 
 **Changed wiring:** N2 (extractArticleID) now wires to N3 (resolveQueryID) instead of directly to N5. N3 wires to N5 with the resolved query ID.
@@ -265,10 +272,10 @@ flowchart TB
 
 ## Slices Grid
 
-| Slice                      | Status     | Highlights                                                                                                                                            | Demo                                               |
-| :------------------------- | :--------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
+| Slice                      | Status      | Highlights                                                                                                                                            | Demo                                               |
+| :------------------------- | :---------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
 | **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                              | Run command, see article summary in terminal       |
 | **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, Go HTML template + CSS print media, chromedp PrintToPDF, embedded OpenSans font, HTML + PDF output                   | Run command, get HTML + PDF                        |
 | **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped        | Run with --translate de, get German PDF            |
 | **V4: Quality Validation** | ⏳ Pending  | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures | Run command, see validation pass/warnings          |
-| **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |
+| **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error | Config file replaces flags, query ID auto-resolves |

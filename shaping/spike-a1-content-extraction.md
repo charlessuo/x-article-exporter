@@ -44,19 +44,21 @@ Block-based rich text (similar to ProseMirror/Slate). Up to 10,000 blocks, 25 me
 
 **A1-Q9: What are the ToS and rate limit implications?**
 
-X's ToS (Sept 2023) explicitly bans scraping without written consent. Internal GraphQL: ~300 req/hr, datacenter IPs banned. However, *X v. Bright Data* ruling suggests ToS scraping bans may not be fully enforceable. Personal/low-volume use is low risk.
+X's ToS (Sept 2023) explicitly bans scraping without written consent. Internal GraphQL: ~300 req/hr, datacenter IPs banned. However, _X v. Bright Data_ ruling suggests ToS scraping bans may not be fully enforceable. Personal/low-volume use is low risk.
 
 ## Key Findings
 
 ### Two viable extraction approaches
 
 **Approach 1: Headless browser (chromedp)**
+
 - Use Go's `chromedp` to load article page with real browser cookies
 - Wait for content to render, then extract from DOM
 - Pros: Most reliable, handles JS rendering, can screenshot/print-to-PDF directly
 - Cons: Slow (~5-10s per article), heavy dependency, browser fingerprint needed
 
 **Approach 2: Direct GraphQL API calls**
+
 - Call `TweetResultByRestId` with cookie auth + correct headers
 - Parse the tweet-wrapped JSON response to extract article content
 - Pros: Fast, lightweight, precise structured data
@@ -72,6 +74,7 @@ X's ToS (Sept 2023) explicitly bans scraping without written consent. Internal G
 ### Article content is a block-based rich text model
 
 The JSON response from GraphQL contains structured blocks:
+
 - Each block has a type (paragraph, heading, list, code, quote, etc.)
 - Text blocks contain inline formatting (bold, italic, strikethrough)
 - Media blocks reference image/video URLs
@@ -90,12 +93,14 @@ The JSON response from GraphQL contains structured blocks:
 ## Recommendation
 
 **GraphQL API (Approach 2) is strongly preferred** for this use case because:
+
 1. Structured block data enables clean translation of individual text segments
 2. Structured data enables precise quality validation (count blocks, verify completeness)
 3. Much faster execution (~200ms vs ~5-10s)
 4. The rotating query ID problem can be mitigated by extracting IDs from X's JS bundles at runtime
 
 The query ID rotation is the main risk. Mitigation options:
+
 - Fetch and parse `main.js` bundle to extract current query IDs on each run
 - Cache extracted IDs with a TTL (e.g., 24 hours)
 - Fall back to headless browser if GraphQL fails (hybrid approach)
@@ -103,6 +108,7 @@ The query ID rotation is the main risk. Mitigation options:
 ## Acceptance
 
 Spike is complete. We can describe:
+
 - How X articles are stored and served (block-based rich text, client-side rendered)
 - The specific API endpoint to fetch article content (`TweetResultByRestId` — articles are fetched as tweets)
 - What authentication is needed (cookie-based, `auth_token` + `ct0`)

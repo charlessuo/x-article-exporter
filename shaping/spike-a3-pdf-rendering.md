@@ -64,6 +64,7 @@ Python tool with C dependencies (cairo, pango, gdk-pixbuf). Go port (`go-weasypr
 6. **Chrome is already installed** on most macOS systems. For CI/Docker: `chromedp/headless-shell` image.
 
 **The Chrome dependency is acceptable** because:
+
 - This is a personal CLI tool, not a library
 - macOS (your platform) almost certainly has Chrome
 - The dependency is well-documented and easy to install
@@ -108,19 +109,42 @@ os.WriteFile(outputPath, pdfBuf, 0644)
 
 ```css
 @media print {
-    body { font-family: Georgia, serif; font-size: 12pt; line-height: 1.6; }
-    h1 { font-size: 24pt; margin-bottom: 8pt; }
-    pre { background: #f5f5f5; padding: 12pt; font-family: 'Courier New', monospace;
-          break-inside: avoid; }
-    blockquote { border-left: 3pt solid #ccc; padding-left: 12pt; color: #555; }
-    img { max-width: 100%; break-inside: avoid; }
-    .header { border-bottom: 1pt solid #ddd; padding-bottom: 8pt; margin-bottom: 16pt; }
+  body {
+    font-family: Georgia, serif;
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+  h1 {
+    font-size: 24pt;
+    margin-bottom: 8pt;
+  }
+  pre {
+    background: #f5f5f5;
+    padding: 12pt;
+    font-family: "Courier New", monospace;
+    break-inside: avoid;
+  }
+  blockquote {
+    border-left: 3pt solid #ccc;
+    padding-left: 12pt;
+    color: #555;
+  }
+  img {
+    max-width: 100%;
+    break-inside: avoid;
+  }
+  .header {
+    border-bottom: 1pt solid #ddd;
+    padding-bottom: 8pt;
+    margin-bottom: 16pt;
+  }
 }
 ```
 
 ## Acceptance
 
 Spike is complete. We can describe:
+
 - Which rendering approach to use (chromedp + HTML template) and why
 - How to implement it (Go HTML template → chromedp `SetDocumentContent` → `PrintToPDF`)
 - CSS strategy for print-quality article layout

@@ -38,21 +38,22 @@ Word count: ±15% (headers/footers/page numbers add text). Translation length: �
 
 ### Tier 1: Per-Export Validation (runs every time, <200ms overhead)
 
-| Check                                        | Library                         | Cost  | Signal                              |
-| -------------------------------------------- | ------------------------------- | ----- | ----------------------------------- |
-| PDF structural integrity                     | `pdfcpu.ValidateFile()`         | ~5ms  | Catches corruption                  |
-| Page count > 0                               | `pdfcpu.PageCountFile()`        | ~2ms  | Catches blank output                |
+| Check                                        | Library                         | Cost  | Signal                                                                                  |
+| -------------------------------------------- | ------------------------------- | ----- | --------------------------------------------------------------------------------------- |
+| PDF structural integrity                     | `pdfcpu.ValidateFile()`         | ~5ms  | Catches corruption                                                                      |
+| Page count > 0                               | `pdfcpu.PageCountFile()`        | ~2ms  | Catches blank output                                                                    |
 | Image count matches input                    | `pdfcpu.ExtractImagesRaw()`     | ~20ms | Catches broken images (note: image entities use type `MEDIA`, not `IMAGE` — count both) |
-| Title present in PDF text                    | `ledongthuc/pdf.GetPlainText()` | ~50ms | Catches extraction failure          |
-| Author present in PDF text                   | (same extraction)               | ~0ms  | Catches extraction failure          |
-| Word count within ±15% of input              | (same extraction)               | ~0ms  | Catches truncation/duplication      |
-| Translation block count matches source       | In-memory comparison            | ~1ms  | Catches translation corruption      |
-| Code blocks byte-identical after translation | `bytes.Equal()`                 | ~1ms  | Catches `ignore_tags` failure       |
-| Translation length within ±30%               | `len()` comparison              | ~1ms  | Catches empty/gibberish translation |
+| Title present in PDF text                    | `ledongthuc/pdf.GetPlainText()` | ~50ms | Catches extraction failure                                                              |
+| Author present in PDF text                   | (same extraction)               | ~0ms  | Catches extraction failure                                                              |
+| Word count within ±15% of input              | (same extraction)               | ~0ms  | Catches truncation/duplication                                                          |
+| Translation block count matches source       | In-memory comparison            | ~1ms  | Catches translation corruption                                                          |
+| Code blocks byte-identical after translation | `bytes.Equal()`                 | ~1ms  | Catches `ignore_tags` failure                                                           |
+| Translation length within ±30%               | `len()` comparison              | ~1ms  | Catches empty/gibberish translation                                                     |
 
 **Total overhead: <200ms** — invisible to the user.
 
 **Behavior:**
+
 - Hard failures (missing title, missing images, PDF invalid) → print error, exit code 1
 - Soft warnings (word count slightly off) → print warning, exit code 0
 
@@ -69,6 +70,7 @@ Additional checks against known test fixtures:
 | Multiple article types        | Image-heavy, code-heavy, short, long articles      |
 
 **Test fixture structure:**
+
 ```
 testdata/
   fixtures/
@@ -84,6 +86,7 @@ testdata/
 ```
 
 **`expected.json` format:**
+
 ```json
 {
   "page_count_min": 3,
@@ -115,6 +118,7 @@ Both are pure Go — no CGo, no external dependencies, work on all platforms.
 ## Acceptance
 
 Spike is complete. We can describe:
+
 - The two-tier validation architecture (per-export + CI)
 - Specific Go libraries and their API functions (`pdfcpu`, `ledongthuc/pdf`)
 - Concrete thresholds for each check (±15% word count, ±30% translation length, exact image count)

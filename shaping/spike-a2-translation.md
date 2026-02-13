@@ -53,6 +53,7 @@ Document-level is better (contextual coherence, consistent terminology). Recomme
 ## Recommendation
 
 **DeepL API as primary translation backend** because:
+
 1. Best quality for the target languages (German, French, Spanish, Italian)
 2. Native `ignore_tags` — exactly what we need for code blocks and LaTeX
 3. Free tier (500K chars/month ≈ 16 articles) covers moderate personal use
@@ -66,6 +67,7 @@ Document-level is better (contextual coherence, consistent terminology). Recomme
 ## Impact on A4 (Quality Pipeline)
 
 **Round-trip translation is NOT a reliable quality signal.** This changes the quality pipeline design:
+
 - Drop round-trip verification as a quality check
 - Instead: validate that translated output has same block structure as input (same number of paragraphs, headings, lists)
 - Validate that code blocks and LaTeX are byte-identical to source (were not modified by translation)
@@ -74,6 +76,7 @@ Document-level is better (contextual coherence, consistent terminology). Recomme
 ## Acceptance
 
 Spike is complete. We can describe:
+
 - Which translation service to use (DeepL) and why
 - How to integrate it (thin Go HTTP client, XML tag handling, ignore_tags for code/LaTeX)
 - The translation strategy (full-document with XML structure preservation)
