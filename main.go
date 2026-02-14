@@ -9,11 +9,7 @@ import (
 	"strings"
 
 	"github.com/annismckenzie/x-article-exporter/internal/config"
-	"github.com/annismckenzie/x-article-exporter/internal/extract"
-	"github.com/annismckenzie/x-article-exporter/internal/images"
-	"github.com/annismckenzie/x-article-exporter/internal/render"
-	"github.com/annismckenzie/x-article-exporter/internal/translate"
-	"github.com/annismckenzie/x-article-exporter/internal/validate"
+	"github.com/annismckenzie/x-article-exporter/internal/pipeline"
 )
 
 func main() {
@@ -32,94 +28,66 @@ func run(args []string) error {
 		return err
 	}
 
-	articleID, err := extract.ExtractArticleID(cfg.URL)
-	if err != nil {
-		return err
-	}
-
 	ctx := context.Background()
 
-	queryID, err := extract.ResolveQueryID(ctx, cfg.QueryID)
+	result, err := pipeline.Run(ctx, pipeline.Options{
+		URL:         cfg.URL,
+		TranslateTo: cfg.TranslateTo,
+		AuthToken:   cfg.AuthToken,
+		CT0:         cfg.CT0,
+		QueryID:     cfg.QueryID,
+		OllamaModel: cfg.OllamaModel,
+		DarkMode:    cfg.DarkMode,
+	})
 	if err != nil {
 		return err
 	}
 
-	log.Println("Fetching article...")
-	body, err := extract.FetchArticle(ctx, articleID, queryID, cfg)
-	if err != nil {
-		return err
+	log.Print(formatValidation(result))
+	for _, w := range result.ValidationWarnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
 	}
-
-	article, err := extract.ParseArticle(body)
-	if err != nil {
-		return err
-	}
-
-	if len(article.Blocks) == 0 {
-		fmt.Fprintln(os.Stderr, "warning: article has no content blocks (content_state may be empty)")
-	}
-
-	if cfg.TranslateTo != "" {
-		client := translate.NewClient("", cfg.OllamaModel)
-		if err := client.Ping(ctx); err != nil {
-			return err
+	if !result.ValidationOK {
+		for _, e := range result.ValidationErrors {
+			fmt.Fprintf(os.Stderr, "validation error: %s\n", e)
 		}
-		log.Printf("Translating to %s...", cfg.TranslateTo)
-		if err := translate.TranslateArticle(ctx, article, cfg.TranslateTo, client); err != nil {
-			return err
-		}
+		return fmt.Errorf("PDF validation failed with %d error(s)", len(result.ValidationErrors))
 	}
-
-	log.Println("Downloading images...")
-	if err := images.DownloadImages(ctx, article); err != nil {
-		return err
-	}
-
-	log.Println("Rendering HTML...")
-	htmlContent := render.RenderHTML(article)
 
 	basePath := cfg.Output
 	if basePath == "" {
-		basePath = sanitizeFilename(article.Title)
+		basePath = sanitizeFilename(result.Title)
 	} else {
 		basePath = strings.TrimSuffix(basePath, ".pdf")
 	}
 
 	htmlPath := basePath + ".html"
-	if err := os.WriteFile(htmlPath, []byte(htmlContent), 0644); err != nil {
+	if err := os.WriteFile(htmlPath, []byte(result.HTML), 0644); err != nil {
 		return fmt.Errorf("writing HTML: %w", err)
 	}
 	log.Printf("HTML written to %s", htmlPath)
 
-	log.Println("Generating PDF...")
-	pdfBytes, err := render.PrintToPDF(ctx, article, cfg.DarkMode)
-	if err != nil {
-		return err
-	}
-
-	log.Println("Validating PDF...")
-	valResult, err := validate.ValidatePDF(pdfBytes, article)
-	if err != nil {
-		return fmt.Errorf("PDF validation: %w", err)
-	}
-	log.Print(valResult)
-	for _, w := range valResult.Warnings {
-		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
-	}
-	if !valResult.OK() {
-		for _, e := range valResult.Errors {
-			fmt.Fprintf(os.Stderr, "validation error: %s\n", e)
-		}
-		return fmt.Errorf("PDF validation failed with %d error(s)", len(valResult.Errors))
-	}
-
 	pdfPath := basePath + ".pdf"
-	if err := os.WriteFile(pdfPath, pdfBytes, 0644); err != nil {
+	if err := os.WriteFile(pdfPath, result.PDFBytes, 0644); err != nil {
 		return fmt.Errorf("writing PDF: %w", err)
 	}
 
 	fmt.Printf("PDF written to %s\n", pdfPath)
 	return nil
+}
+
+func formatValidation(r *pipeline.Result) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "PDF valid. %d pages. %d images. %d words.", r.PageCount, r.ImageCount, r.WordCount)
+	if len(r.ValidationWarnings) > 0 {
+		for _, w := range r.ValidationWarnings {
+			fmt.Fprintf(&b, " Warning: %s.", w)
+		}
+	}
+	if r.ValidationOK {
+		b.WriteString(" OK.")
+	}
+	return b.String()
 }
 
 // sanitizeFilename replaces characters that are invalid in filenames.
