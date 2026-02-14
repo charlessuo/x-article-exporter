@@ -49,12 +49,14 @@
 
 **Notes:**
 
-- Images downloaded and base64-embedded in HTML (MEDIA entities resolved via `media_entities[]`)
-- Go HTML template with CSS print media, embedded OpenSans variable font
-- Block grouping: consecutive list items → `<ul>`/`<ol>`, code blocks → `<pre><code>`, blockquotes → `<blockquote>`
-- Boundary-based styled text renderer (handles overlapping Bold/Italic/Code/Link/Strikethrough ranges, case-insensitive)
-- Newlines within blocks converted to `<br>` tags
-- chromedp `PrintToPDF` with page numbers
+- Images downloaded and base64-embedded (MEDIA entities resolved via `media_entities[]`)
+- Typst source renderer generates `.typ` from article model, compiled via `typst compile`
+- Block grouping: consecutive list items → `- `/`+ `, code blocks → ```` ``` ````, blockquotes → `#block(stroke: (left: ...))[]`
+- Boundary-based styled text renderer for Typst markup (`*bold*`, `_italic_`, `` `code` ``, `#strike[]`, `#link()[]`)
+- Newlines within styled segments handled by closing/reopening markup at line boundaries
+- Embedded Open Sans static TTFs (Regular/Bold/Italic/BoldItalic) + Apple Symbols fallback
+- Dark mode via `--dark` flag: `#set page(fill: rgb("#000"))` + `#set text(fill: rgb("#e7e9ea"))`
+- Page numbers "1 / 1" centered at bottom, dark mode margins filled with page color
 - Self-contained HTML always saved alongside PDF (diffable, shareable via Slack)
 - Output file path via `--output` flag (default: `./{title}.pdf` + `.html`)
 
@@ -64,9 +66,9 @@
 | --- | ----- | --------- | ------------------------------------------------------------- | ------- | --------- | ---------- |
 | N7  | P2    | extract   | `downloadImages(blocks)` — fetch + base64-encode              | call    | —         | updates S3 |
 | N10 | P2    | render    | `renderHTML(article, blocks)` — Go template + CSS             | call    | —         | → N11      |
-| N11 | P2    | render    | `printToPDF(html)` — chromedp SetDocumentContent + PrintToPDF | call    | → N16     | → N13      |
-| N13 | P6    | output    | `writePDF(pdfBytes, outputPath)`                              | call    | writes P6 | → U5       |
-| N16 | P5    | —         | `page.PrintToPDF()` — Chrome DevTools Protocol                | call    | —         | → N11      |
+| N11 | P2    | render    | `printToPDF(article, darkMode)` — generate Typst source, `typst compile` | call    | → N16     | → N13      |
+| N13 | P6    | output    | `writePDF(pdfBytes, outputPath)`                                         | call    | writes P6 | → U5       |
+| N16 | P5    | —         | `typst compile` — Typst binary renders .typ to PDF                       | call    | —         | → N11      |
 
 ---
 
@@ -103,7 +105,7 @@
 
 **Notes:**
 
-- Runs automatically after every `printToPDF` (<200ms overhead)
+- Runs automatically after every PDF render (<200ms overhead)
 - `pdfcpu`: structural integrity, page count, image count
 - `ledongthuc/pdf`: text extraction for title/author present, word count ±15%
 - U3 extended with PDF validation warnings (word count off, image count mismatch)
@@ -194,7 +196,7 @@ flowchart TB
     %% External systems
     N14["N14: GET TweetResultByRestId"]
     N15["N15: POST /api/chat (Ollama)"]
-    N16["N16: page.PrintToPDF()"]
+    N16["N16: typst compile"]
 
     %% Force slice ordering
     V1 ~~~ V2
@@ -277,7 +279,7 @@ flowchart TB
 | Slice                      | Status      | Highlights                                                                                                                                             | Demo                                               |
 | :------------------------- | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
 | **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                               | Run command, see article summary in terminal       |
-| **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, Go HTML template + CSS print media, chromedp PrintToPDF, embedded OpenSans font, HTML + PDF output                    | Run command, get HTML + PDF                        |
+| **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, Typst source renderer + `typst compile`, embedded OpenSans fonts, dark mode, HTML + PDF output                        | Run command, get HTML + PDF                        |
 | **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped         | Run with --translate de, get German PDF            |
 | **V4: Quality Validation** | ✅ Complete | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures  | Run command, see validation pass/warnings          |
 | **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |

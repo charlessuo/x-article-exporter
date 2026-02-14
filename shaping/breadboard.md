@@ -2,7 +2,7 @@
 
 ## Context
 
-Go CLI tool with a linear pipeline: load config → extract article from X → (optionally) translate via DeepL → render to PDF via Chrome → validate PDF → write to disk. The user interacts entirely through the terminal (CLI args in, progress/errors/output path out).
+Go CLI tool with a linear pipeline: load config → extract article from X → (optionally) translate via Ollama → render to PDF via Typst → validate PDF → write to disk. The user interacts entirely through the terminal (CLI args in, progress/errors/output path out).
 
 ---
 
@@ -14,7 +14,7 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | P2  | Pipeline   | Core processing: config → extraction → translation → rendering → validation → output                     |
 | P3  | X API      | External: `x.com/i/api/graphql/` (article data) and `abs.twimg.com` (JS bundles for query ID extraction) |
 | P4  | DeepL API  | External: `api-free.deepl.com/v2/translate`                                                              |
-| P5  | Chrome     | External: headless Chrome via chromedp                                                                   |
+| P5  | Typst      | External: `typst compile` binary for PDF rendering                                                       |
 | P6  | Filesystem | Config file (`~/.config/x-article-exporter/config.yaml`), query ID cache, output PDF                     |
 
 ---
@@ -45,12 +45,12 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | N8  | P2    | translate | `translateBlocks(blocks, targetLang, apiKey)` — XML-wrap translatable blocks, set `ignore_tags` for code/LaTeX, single POST to DeepL, unwrap response, merge back                                                                                                  | call    | → N15             | updates S3                             |
 | N9  | P2    | translate | `validateTranslation(original, translated)` — block count match, code block byte-identity (`bytes.Equal`), translation length ratio ±30%                                                                                                                           | call    | —                 | → U3 (soft), → U4 (hard)               |
 | N10 | P2    | render    | `renderHTML(article, blocks)` — Go `html/template` renders blocks to HTML with inline CSS for print media (`@media print`, `break-inside: avoid`, page margins, Georgia/monospace font stack)                                                                      | call    | —                 | → N11                                  |
-| N11 | P2    | render    | `printToPDF(html)` — `chromedp.NewContext()`, `page.SetDocumentContent(html)`, `page.PrintToPDF()` with `WithDisplayHeaderFooter`, `WithFooterTemplate` (page numbers), `WithPrintBackground`, margins                                                             | call    | → N16             | → N12                                  |
+| N11 | P2    | render    | `printToPDF(article, darkMode)` — generate Typst source from article model, decode base64 images to temp dir, write embedded fonts, `typst compile` to PDF                                                                                                         | call    | → N16             | → N12                                  |
 | N12 | P2    | validate  | `validatePDF(pdfBytes, article, blocks)` — `pdfcpu.ValidateFile()` (~5ms), `PageCountFile()` > 0, `ExtractImagesRaw()` count matches expected, `ledongthuc/pdf.GetPlainText()` for title/author present + word count ±15%                                          | call    | —                 | → U3 (soft), → U4 (hard), → N13 (pass) |
 | N13 | P6    | output    | `writePDF(pdfBytes, outputPath)` — `os.WriteFile(path, pdfBytes, 0644)`                                                                                                                                                                                            | call    | writes to P6      | → U5                                   |
 | N14 | P3    | —         | `GET /graphql/{queryId}/TweetResultByRestId` — `authorization: Bearer {token}`, `x-csrf-token: {ct0}`, `cookie: auth_token={auth_token}; ct0={ct0}`                                                                                                                | call    | —                 | → N5                                   |
 | N15 | P4    | —         | `POST /v2/translate` — `text`, `target_lang`, `tag_handling: xml`, `ignore_tags: code,latex`                                                                                                                                                                       | call    | —                 | → N8                                   |
-| N16 | P5    | —         | `page.PrintToPDF()` — Chrome DevTools Protocol via chromedp Go library                                                                                                                                                                                             | call    | —                 | → N11                                  |
+| N16 | P5    | —         | `typst compile` — Typst CLI binary renders .typ source to PDF                                                                                                                                                                                                      | call    | —                 | → N11                                  |
 
 ---
 
@@ -118,8 +118,8 @@ flowchart TB
         N15["N15: POST /v2/translate"]
     end
 
-    subgraph P5["P5: Chrome"]
-        N16["N16: page.PrintToPDF()"]
+    subgraph P5["P5: Typst"]
+        N16["N16: typst compile"]
     end
 
     %% Entry

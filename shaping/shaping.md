@@ -48,7 +48,7 @@
 
 **A2: Translation** — Send all translatable blocks as a single XML-tagged document to DeepL API (`/v2/translate`) with `tag_handling: "xml"`. Use `ignore_tags` for code blocks and LaTeX. Thin Go HTTP client (~100 LOC). Free tier: 500K chars/month ≈ 16 articles. Pro: ~$0.75/article.
 
-**A3: PDF rendering** — Render blocks to HTML via Go template + CSS, use `chromedp` (headless Chrome) to `PrintToPDF`. Full CSS print media control (page breaks, headers/footers with page numbers). Images base64-encoded inline. ~250 LOC total (template + CSS + render). Requires Chrome/Chromium installed.
+**A3: PDF rendering** — Generate Typst source from article model, compile to PDF via `typst compile`. Page setup (us-letter, margins, numbering), dark mode support (`--dark` flag / `dark_mode` config), embedded Open Sans fonts (static TTFs via `go:embed`), Apple Symbols fallback for special glyphs. Images decoded from base64 data URIs to temp files. ~500 LOC total (Typst renderer + styled text + PDF compilation). Requires `typst` binary installed.
 
 **A4: Quality pipeline** — Two-tier validation. Per-export (<200ms): `pdfcpu.ValidateFile()`, page count, image count match, title/author present, word count ±15%. CI: golden metadata snapshots, must-contain phrases, empty page detection. Libraries: `pdfcpu` + `ledongthuc/pdf` (both pure Go).
 
@@ -98,12 +98,11 @@ See [spike-a3-pdf-rendering.md](./spike-a3-pdf-rendering.md).
 
 - wkhtmltopdf is dead (archived 2024, deprecated QtWebKit)
 - Go PDF libraries (gofpdf/fpdf/maroto) require ~1000+ LOC for rich article layout — too complex
-- pandoc + typst is good quality but two external dependencies
-- weasyprint has heavy Python/C dependency chain, Go port is alpha
-- **chromedp + HTML template wins:** HTML/CSS is the natural representation for article content, Chrome renders it perfectly, CSS handles all styling/page breaks/headers, ~250 LOC total
-- Chrome dependency is acceptable for a personal CLI tool (almost certainly installed on macOS)
+- chromedp + HTML template was the initial choice (V2) but hit hard limitations: Chrome margin areas are always white (killing dark mode), CSS body padding doesn't repeat across pages, page numbers live in the always-white margin area
+- WeasyPrint and Typst both solve all Chrome limitations — see [spike-a-weasyprint.md](./spike-a-weasyprint.md), [spike-b-typst.md](./spike-b-typst.md), [spike-comparison.md](./spike-comparison.md)
+- **Typst wins:** no Docker dependency, superior typography (hyphenation, smart page breaks), faster rendering, smaller PDFs, single static binary
 
-**A3 is resolved** — mechanism is concrete and well-understood.
+**A3 is resolved** — Typst renderer implemented and verified.
 
 ### Spike results for A4
 
@@ -176,10 +175,10 @@ See [spike-a5-thread-extraction.md](./spike-a5-thread-extraction.md).
 - R0–R6: Satisfied by current implementation (V1–V5). See notes below for mechanism details.
 - R7, R8 fail for +A5: A5b–d are flagged unknowns (⚠️). Can't claim ✅ until spike resolves them.
 - R11 fails for +A6 alone: needs both A5 (threads) and A6 (API). Passes once both are implemented.
-- R0 ✅: A1 (GraphQL extraction → Draft.js blocks) + A3 (chromedp HTML→PDF) form the complete pipeline
+- R0 ✅: A1 (GraphQL extraction → Draft.js blocks) + A3 (Typst article→PDF) form the complete pipeline
 - R1 ✅: `TweetResultByRestId` with `withArticleRichContentState: true` returns full content as Draft.js blocks in `content_state` field (title, body, images, entities)
 - R2 ✅: Local Ollama with translategemma:12b, batch [N] delimiters, plain text translation
-- R3 ✅: chromedp `PrintToPDF` produces self-contained PDF with base64-embedded images
+- R3 ✅: Typst `compile` produces self-contained PDF with embedded images and fonts
 - R4 ✅: Two-tier validation pipeline with `pdfcpu` + `ledongthuc/pdf`, <200ms per-export overhead
 - R5 ✅: Config file (`~/.config/x-article-exporter/config.yaml`) for `auth_token` + `ct0`, CLI flags as override. Bearer token is hardcoded (same for all users).
 - R6 ✅: `--translate <lang>` flag maps directly to Ollama's target language parameter

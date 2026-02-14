@@ -20,7 +20,7 @@ Design a validation pipeline with specific Go libraries, thresholds, and a strat
 
 **A4-Q3: How accurate is PDF text extraction for self-generated PDFs?**
 
-**Very accurate (95-99%).** Since we control the PDF renderer (chromedp), the layout is single-column with simple formatting. Text extraction fidelity is high — much better than arbitrary third-party PDFs.
+**Moderate for Typst output (~29% word extraction).** Typst uses CID font encoding that `ledongthuc/pdf` can't fully extract. Title and author are typically found, but word count is significantly underreported. The validation pipeline handles this via a `poorExtraction` threshold (<50%) that downgrades text checks from errors to warnings. Visual output is correct — this is purely a text extraction limitation.
 
 **A4-Q4: Is visual regression testing worth it?**
 
