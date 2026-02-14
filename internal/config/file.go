@@ -16,6 +16,7 @@ type fileConfig struct {
 	CT0         string      `yaml:"ct0"`
 	OllamaModel string     `yaml:"ollama_model"`
 	DarkMode    bool        `yaml:"dark_mode"`
+	OutputDir   string      `yaml:"output_dir"`
 	Server      *serverYAML `yaml:"server"`
 }
 
