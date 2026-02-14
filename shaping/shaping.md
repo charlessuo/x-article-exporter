@@ -149,32 +149,33 @@ See [spike-a5-thread-extraction.md](./spike-a5-thread-extraction.md).
 
 **A6g:** Rate limiting per API key — token bucket or fixed window, configurable in config YAML.
 
-**A6 status:** No flagged unknowns. `net/http`, goroutines, and in-memory maps are well-understood Go patterns. CLI and API become two thin entry points calling the same pipeline.
+**A6 is resolved** — implemented in V6. Pipeline extracted to reusable `internal/pipeline.Run()`. Go 1.22+ `ServeMux` patterns (`POST /export`, `GET /export/{id}`, `GET /export/{id}/pdf`). Bounded concurrency via semaphore channel, context propagation for graceful cancellation, token-bucket rate limiting per API key, Bearer token auth middleware. Graceful shutdown with `signal.Notify` + `http.Server.Shutdown`.
 
 ---
 
 ## Fit Check (R × A)
 
-| Req | Requirement                                                                                   | Status    | A (current) | +A5 (threads) | +A6 (API) |
-| --- | --------------------------------------------------------------------------------------------- | --------- | :---------: | :-----------: | :-------: |
-| R0  | Produce a readable, well-formatted PDF from an X article URL                                  | Core goal |     ✅      |      ✅       |    ✅     |
-| R1  | Extract full article content from X (text, images, author, date)                              | Must-have |     ✅      |      ✅       |    ✅     |
-| R2  | Translate article text to a target language before PDF generation                             | Must-have |     ✅      |      ✅       |    ✅     |
-| R3  | PDF is shareable with people who have no X account (self-contained)                           | Must-have |     ✅      |      ✅       |    ✅     |
-| R4  | Automated quality validation — can judge PDF correctness without manual inspection            | Must-have |     ✅      |      ✅       |    ✅     |
-| R5  | Handle X authentication via config file with CLI flag override (`auth_token` + `ct0` cookies) | Must-have |     ✅      |      ✅       |    ✅     |
-| R6  | Translation is opt-in per export via explicit `--translate <lang>` CLI flag                   | Must-have |     ✅      |      ✅       |    ✅     |
-| R7  | Export tweet threads as PDF with the same quality and shareability as articles                | Must-have |     ❌      |      ❌       |    ❌     |
-| R8  | Thread structure is visually clear in the PDF (each tweet identifiable, chronological order)  | Must-have |     ❌      |      ❌       |    ❌     |
-| R9  | HTTP API interface — POST a URL, receive a PDF                                                | Must-have |     ❌      |      ❌       |    ✅     |
-| R10 | API authentication via API keys (not X cookies — those are server-side)                       | Must-have |     ❌      |      ❌       |    ✅     |
-| R11 | Translation and thread export work through the API, not just CLI                              | Must-have |     ❌      |      ❌       |    ❌     |
+| Req | Requirement                                                                                   | Status    | A (current, V1–V6) | +A5 (threads) |
+| --- | --------------------------------------------------------------------------------------------- | --------- | :----------------: | :-----------: |
+| R0  | Produce a readable, well-formatted PDF from an X article URL                                  | Core goal |         ✅         |      ✅       |
+| R1  | Extract full article content from X (text, images, author, date)                              | Must-have |         ✅         |      ✅       |
+| R2  | Translate article text to a target language before PDF generation                             | Must-have |         ✅         |      ✅       |
+| R3  | PDF is shareable with people who have no X account (self-contained)                           | Must-have |         ✅         |      ✅       |
+| R4  | Automated quality validation — can judge PDF correctness without manual inspection            | Must-have |         ✅         |      ✅       |
+| R5  | Handle X authentication via config file with CLI flag override (`auth_token` + `ct0` cookies) | Must-have |         ✅         |      ✅       |
+| R6  | Translation is opt-in per export via explicit `--translate <lang>` CLI flag                   | Must-have |         ✅         |      ✅       |
+| R7  | Export tweet threads as PDF with the same quality and shareability as articles                | Must-have |         ❌         |      ❌       |
+| R8  | Thread structure is visually clear in the PDF (each tweet identifiable, chronological order)  | Must-have |         ❌         |      ❌       |
+| R9  | HTTP API interface — POST a URL, receive a PDF                                                | Must-have |         ✅         |      ✅       |
+| R10 | API authentication via API keys (not X cookies — those are server-side)                       | Must-have |         ✅         |      ✅       |
+| R11 | Translation and thread export work through the API, not just CLI                              | Must-have |         ❌         |      ❌       |
 
 **Notes:**
 
-- R0–R6: Satisfied by current implementation (V1–V5). See notes below for mechanism details.
-- R7, R8 fail for +A5: A5b–d are flagged unknowns (⚠️). Can't claim ✅ until spike resolves them.
-- R11 fails for +A6 alone: needs both A5 (threads) and A6 (API). Passes once both are implemented.
+- R0–R6: Satisfied by V1–V5. See notes below for mechanism details.
+- R7, R8 fail: A5b–d are flagged unknowns (⚠️). Can't claim ✅ until spike resolves them.
+- R9, R10: Satisfied by V6 (HTTP API server with API key auth).
+- R11 fails: translation works through the API (`"translate": "de"` in POST body), but thread export (A5) isn't implemented yet. Passes once A5 is done.
 - R0 ✅: A1 (GraphQL extraction → Draft.js blocks) + A3 (Typst article→PDF) form the complete pipeline
 - R1 ✅: `TweetResultByRestId` with `withArticleRichContentState: true` returns full content as Draft.js blocks in `content_state` field (title, body, images, entities)
 - R2 ✅: Local Ollama with translategemma:12b, batch [N] delimiters, plain text translation
@@ -182,6 +183,8 @@ See [spike-a5-thread-extraction.md](./spike-a5-thread-extraction.md).
 - R4 ✅: Two-tier validation pipeline with `pdfcpu` + `ledongthuc/pdf`, <200ms per-export overhead
 - R5 ✅: Config file (`~/.config/x-article-exporter/config.yaml`) for `auth_token` + `ct0`, CLI flags as override. Bearer token is hardcoded (same for all users).
 - R6 ✅: `--translate <lang>` flag maps directly to Ollama's target language parameter
+- R9 ✅: `POST /export` accepts URL + options, returns job ID; `GET /export/{id}/pdf` returns completed PDF
+- R10 ✅: Bearer token API key auth in middleware, keys configured in YAML; X cookies are server-side only
 
 ---
 
@@ -189,7 +192,7 @@ See [spike-a5-thread-extraction.md](./spike-a5-thread-extraction.md).
 
 See [breadboard.md](./breadboard.md).
 
-**Summary:** 5 UI affordances (CLI args, progress, warnings, errors, success), 16 code affordances (13 internal pipeline stages + 3 external API boundaries), 3 data stores (config, query ID cache, article model). Linear pipeline: load config → extract article → [translate] → render PDF → validate → write.
+**Summary:** 6 UI affordances (CLI args, progress, warnings, errors, success, HTTP API), 22 code affordances (13 pipeline stages + 6 API/job management + 3 external boundaries), 4 data stores (config, query ID cache, article model, job storage). CLI mode: load config → extract → [translate] → render → validate → write. Server mode: HTTP request → job manager → pipeline.Run() → serve PDF.
 
 ---
 

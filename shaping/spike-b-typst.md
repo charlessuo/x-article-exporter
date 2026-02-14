@@ -24,6 +24,7 @@
 ### B-Q1: Can we produce a good-looking PDF?
 
 **YES.** The output is excellent. Typst produces professional-quality typography with:
+
 - Proper hyphenation and justification
 - Clean page breaks
 - Elegant spacing between elements
@@ -47,14 +48,14 @@
 
 ### B-Q6: How does styled text look?
 
-| Style | Typst Markup | Rendering |
-|-------|-------------|-----------|
-| Bold | `*bold*` | Excellent |
-| Italic | `_italic_` | Excellent |
-| Bold+Italic | `*_bold italic_*` | Excellent |
-| Inline code | `` `code` `` | Good — monospace with subtle background |
-| Strikethrough | `#strike[text]` | Works |
-| Link | `#link("url")[text]` | Blue, clickable |
+| Style         | Typst Markup         | Rendering                               |
+| ------------- | -------------------- | --------------------------------------- |
+| Bold          | `*bold*`             | Excellent                               |
+| Italic        | `_italic_`           | Excellent                               |
+| Bold+Italic   | `*_bold italic_*`    | Excellent                               |
+| Inline code   | `` `code` ``         | Good — monospace with subtle background |
+| Strikethrough | `#strike[text]`      | Works                                   |
+| Link          | `#link("url")[text]` | Blue, clickable                         |
 
 All inline styles render correctly. The link color can be customized with `#show link: set text(fill: rgb("#1d9bf0"))`.
 
@@ -76,41 +77,44 @@ func main() { ... }
 
 ### B-Q8: Output quality vs Chrome?
 
-| Aspect | Chrome | Typst |
-|--------|--------|-------|
-| Typography | Good (browser rendering) | Excellent (proper typesetter) |
-| Hyphenation | None | Automatic |
-| Page breaks | Browser-decided | Typst-decided (smarter avoidance of orphans/widows) |
-| Code highlighting | None (plain monospace) | Built-in syntax highlighting |
-| Images | Inline base64 | File path references |
-| Fonts | woff2 embedded | TTF/OTF via --font-path |
+| Aspect            | Chrome                   | Typst                                               |
+| ----------------- | ------------------------ | --------------------------------------------------- |
+| Typography        | Good (browser rendering) | Excellent (proper typesetter)                       |
+| Hyphenation       | None                     | Automatic                                           |
+| Page breaks       | Browser-decided          | Typst-decided (smarter avoidance of orphans/widows) |
+| Code highlighting | None (plain monospace)   | Built-in syntax highlighting                        |
+| Images            | Inline base64            | File path references                                |
+| Fonts             | woff2 embedded           | TTF/OTF via --font-path                             |
 
 Typst produces arguably **better** typography than Chrome — it's a proper typesetting engine, not a browser print function.
 
 ### B-Q9: Performance?
 
-| Metric | Chrome (chromedp) | Typst |
-|--------|-------------------|-------|
-| Render time (6 pages) | ~1-2s | **0.36s** |
-| Binary size | ~500 MB (Chromium) | **39 MB** |
-| Cold start | ~1-2s | **<0.1s** |
-| Memory usage | ~200+ MB | ~20 MB |
-| Dependencies | Chrome + chromedp Go lib | Single binary |
+| Metric                | Chrome (chromedp)        | Typst         |
+| --------------------- | ------------------------ | ------------- |
+| Render time (6 pages) | ~1-2s                    | **0.36s**     |
+| Binary size           | ~500 MB (Chromium)       | **39 MB**     |
+| Cold start            | ~1-2s                    | **<0.1s**     |
+| Memory usage          | ~200+ MB                 | ~20 MB        |
+| Dependencies          | Chrome + chromedp Go lib | Single binary |
 
 Typst is ~5-8x faster and uses ~10x less memory.
 
 ## Code Change Estimate
 
 New file `internal/render/typst.go` (~250-350 LOC):
+
 - `RenderTypst(article *Article, darkMode bool) string` — converts Article blocks to Typst source
 - Block type mapping: unstyled→paragraph, headers→`=`/`==`/`===`, lists→`-`/`+`, blockquotes→`#quote`, code→backtick blocks, atomic→`#image`
 - Inline style mapping: BOLD→`*`, ITALIC→`_`, CODE→backtick, STRIKETHROUGH→`#strike[]`, LINK→`#link("")[]`
 - Image handling: decode base64 → write to temp dir → `#image("path")`
 
 New file or function for compilation (~30 LOC):
+
 - `CompileTypst(typstSource string) ([]byte, error)` — exec `typst compile` with stdin/stdout
 
 Updates to `html.go` (~10 LOC):
+
 - Keep HTML rendering for `.html` output (sharing/preview)
 - No changes to existing HTML pipeline
 

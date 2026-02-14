@@ -51,7 +51,7 @@
 
 - Images downloaded and base64-embedded (MEDIA entities resolved via `media_entities[]`)
 - Typst source renderer generates `.typ` from article model, compiled via `typst compile`
-- Block grouping: consecutive list items → `- `/`+ `, code blocks → ```` ``` ````, blockquotes → `#block(stroke: (left: ...))[]`
+- Block grouping: consecutive list items → `- `/`+ `, code blocks → ` ``` `, blockquotes → `#block(stroke: (left: ...))[]`
 - Boundary-based styled text renderer for Typst markup (`*bold*`, `_italic_`, `` `code` ``, `#strike[]`, `#link()[]`)
 - Newlines within styled segments handled by closing/reopening markup at line boundaries
 - Embedded Open Sans static TTFs (Regular/Bold/Italic/BoldItalic) + Apple Symbols fallback
@@ -62,10 +62,10 @@
 
 **New affordances:**
 
-| #   | Place | Component | Affordance                                                    | Control | Wires Out | Returns To |
-| --- | ----- | --------- | ------------------------------------------------------------- | ------- | --------- | ---------- |
-| N7  | P2    | extract   | `downloadImages(blocks)` — fetch + base64-encode              | call    | —         | updates S3 |
-| N10 | P2    | render    | `renderHTML(article, blocks)` — Go template + CSS             | call    | —         | → N11      |
+| #   | Place | Component | Affordance                                                               | Control | Wires Out | Returns To |
+| --- | ----- | --------- | ------------------------------------------------------------------------ | ------- | --------- | ---------- |
+| N7  | P2    | extract   | `downloadImages(blocks)` — fetch + base64-encode                         | call    | —         | updates S3 |
+| N10 | P2    | render    | `renderHTML(article, blocks)` — Go template + CSS                        | call    | —         | → N11      |
 | N11 | P2    | render    | `printToPDF(article, darkMode)` — generate Typst source, `typst compile` | call    | → N16     | → N13      |
 | N13 | P6    | output    | `writePDF(pdfBytes, outputPath)`                                         | call    | writes P6 | → U5       |
 | N16 | P5    | —         | `typst compile` — Typst binary renders .typ to PDF                       | call    | —         | → N11      |
@@ -155,6 +155,44 @@
 
 ---
 
+## V6: Web API
+
+**Demo:** `make serve` starts the server. Then: `curl -X POST -H "Authorization: Bearer <key>" -d '{"url":"https://x.com/i/article/123"}' http://localhost:8080/export` → 202 with job ID. Poll `GET /export/{id}` for status. Download `GET /export/{id}/pdf` when complete. Ctrl-C → graceful shutdown.
+
+**Notes:**
+
+- Pipeline extracted to reusable `internal/pipeline.Run()` — both CLI and server call the same code path
+- `--serve` flag pre-scanned before `config.ParseFlags` (server mode has no positional URL argument)
+- Go 1.22+ `ServeMux` patterns: `"POST /export"`, `"GET /export/{id}"`, `"GET /export/{id}/pdf"` (no manual string parsing)
+- Bounded concurrency via `chan struct{}` semaphore (configurable `max_concurrent_jobs`, default 4)
+- Context propagation: `context.WithCancel` from manager to pipeline goroutines for cancellation
+- `Storage.Get()` returns copies to prevent data races between readers and writers
+- Graceful shutdown: `signal.Notify(SIGINT, SIGTERM)` + `http.Server.Shutdown` + `sync.WaitGroup` for in-flight jobs
+- TTL cleanup uses `UpdatedAt` (not `CreatedAt`), so long-running jobs survive their full TTL after completion
+- Bearer token auth middleware validates `Authorization: Bearer <key>` against config
+- Token-bucket rate limiting per API key on POST /export only (the expensive endpoint)
+- `http.MaxBytesReader` limits request body to 1MB
+- HTTP server timeouts: read 30s, write 60s, idle 120s
+- URL validated via `extract.ExtractArticleID` before accepting job (400 on bad URL)
+- Config: `server:` YAML section with `api_keys`, `port`, `host`, `default_rate_limit_per_hour`, `max_concurrent_jobs`, `job_ttl_minutes`
+
+**New affordances:**
+
+| #   | Place | Component | Affordance                                                                     | Control | Wires Out       | Returns To |
+| --- | ----- | --------- | ------------------------------------------------------------------------------ | ------- | --------------- | ---------- |
+| U6  | P7    | —         | HTTP API: POST /export, GET /export/{id}, GET /export/{id}/pdf                 | invoke  | → N17           | —          |
+| N17 | P7    | api       | `Server.Handler()` — mux with auth + rate limit middleware                     | call    | → N18, N19, N20 | —          |
+| N18 | P7    | api       | `handleExport()` — validate URL, submit to manager, return 202                 | call    | → N21           | → U6       |
+| N19 | P7    | api       | `handleExportStatus()` — return job metadata as JSON                           | call    | reads S4        | → U6       |
+| N20 | P7    | api       | `handleExportPDF()` — return PDF bytes with Content-Disposition                | call    | reads S4        | → U6       |
+| N21 | P2    | jobs      | `Manager.Submit()` — bounded goroutine, calls pipeline.Run()                   | call    | → N22           | → S4       |
+| N22 | P2    | pipeline  | `pipeline.Run()` — reusable pipeline (extract → translate → render → validate) | call    | → existing      | → N21      |
+| S4  | P2    | jobs      | `Storage` — in-memory job map with TTL cleanup via `UpdatedAt`                 | store   | —               | → N19, N20 |
+
+**Changed wiring:** CLI mode: `main.run()` calls `pipeline.Run()` then writes files. Server mode: `Manager.Submit()` calls `pipeline.Run()` in a goroutine, stores result in S4, HTTP handlers serve from S4.
+
+---
+
 ## Sliced Breadboard
 
 ```mermaid
@@ -193,6 +231,17 @@ flowchart TB
         S2["S2: queryIDCache"]
     end
 
+    subgraph V6["V6: WEB API"]
+        U6["U6: HTTP API"]
+        N17["N17: Server.Handler()"]
+        N18["N18: handleExport()"]
+        N19["N19: handleExportStatus()"]
+        N20["N20: handleExportPDF()"]
+        N21["N21: Manager.Submit()"]
+        N22["N22: pipeline.Run()"]
+        S4["S4: jobStorage"]
+    end
+
     %% External systems
     N14["N14: GET TweetResultByRestId"]
     N15["N15: POST /api/chat (Ollama)"]
@@ -203,6 +252,7 @@ flowchart TB
     V2 ~~~ V3
     V3 ~~~ V4
     V4 ~~~ V5
+    V5 ~~~ V6
 
     %% V1 flow
     U1 --> N1
@@ -254,22 +304,35 @@ flowchart TB
     N8 -.-> U2
     N11 -.-> U2
 
+    %% V6 flow
+    U6 --> N17
+    N17 --> N18
+    N17 --> N19
+    N17 --> N20
+    N18 --> N21
+    N21 --> N22
+    N22 --> N2
+    N21 --> S4
+    S4 -.-> N19
+    S4 -.-> N20
+
     %% Slice boundary styling
     style V1 fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
     style V2 fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
     style V3 fill:#fff3e0,stroke:#ff9800,stroke-width:2px
     style V4 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
     style V5 fill:#fff8e1,stroke:#ffc107,stroke-width:2px
+    style V6 fill:#fce4ec,stroke:#e91e63,stroke-width:2px
 
     classDef ui fill:#ffb6c1,stroke:#d87093,color:#000
     classDef nonui fill:#d3d3d3,stroke:#808080,color:#000
     classDef store fill:#e6e6fa,stroke:#9370db,color:#000
     classDef external fill:#b3e5fc,stroke:#0288d1,color:#000
 
-    class U1,U2,U4,U5 ui
-    class N1,N2,N3,N4,N5,N6,N7,N8,N10,N11,N12,N13 nonui
+    class U1,U2,U4,U5,U6 ui
+    class N1,N2,N3,N4,N5,N6,N7,N8,N10,N11,N12,N13,N17,N18,N19,N20,N21,N22 nonui
     class N14,N15,N16 external
-    class S1,S2,S3 store
+    class S1,S2,S3,S4 store
 ```
 
 ---
@@ -283,5 +346,5 @@ flowchart TB
 | **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped         | Run with --translate de, get German PDF            |
 | **V4: Quality Validation** | ✅ Complete | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures  | Run command, see validation pass/warnings          |
 | **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |
-| **V6: Web API**            | ⏳ Pending  | net/http server, POST /export + GET /export/{id} + GET /export/{id}/pdf, API key auth, async job manager with goroutines, rate limiting                | POST URL to API, get PDF back                      |
+| **V6: Web API**            | ✅ Complete | Pipeline extracted to reusable package, Go 1.22+ ServeMux, bounded concurrency, Bearer auth, token-bucket rate limiting, graceful shutdown             | POST URL to API, get PDF back                      |
 | **V7: Thread Export**      | ⏳ Pending  | Detect thread vs article URL, walk self-reply chain, parse tweets into block model, thread-specific HTML template with tweet cards. Spike needed (A5). | Pass thread URL, get thread PDF                    |

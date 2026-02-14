@@ -8,21 +8,21 @@ Both WeasyPrint and Typst solve all Chrome limitations. Both produce dark mode w
 
 ## Side-by-Side
 
-| Dimension                        | A: WeasyPrint (Docker)                    | B: Typst                                         |
-|----------------------------------|-------------------------------------------|--------------------------------------------------|
-| **Dark mode full-bleed**         | `@page { background-color }` — works      | `#set page(fill: black)` — works                 |
-| **Consistent margins**           | `@page { margin: 0.75in }` — works        | `#set page(margin: 0.75in)` — works              |
-| **Page numbers**                 | `@page { @bottom-center { content } }`    | `#set page(numbering: "1 / 1")`                  |
-| **Rich content**                 | Reuse existing HTML+CSS                   | New Typst renderer needed                        |
-| **Fonts**                        | Existing woff2 base64 (with warnings)     | TTF via `--font-path`                            |
-| **Images**                       | Existing base64 data URIs                 | Write temp files, reference by path              |
-| **Code syntax highlighting**     | None (same as Chrome)                     | Built-in, multi-language                         |
-| **Render time (real article)**   | ~1.0s (16 pages)                          | ~0.36s (6 pages, subset)                         |
-| **PDF size**                     | 2.29 MB (16 pages)                        | 568 KB (6 pages, subset)                         |
-| **Dependency**                   | Docker (257 MB image)                     | Single binary (39 MB)                            |
-| **Code change**                  | ~70 LOC (replace chromedp with exec)      | ~300 LOC (new Typst renderer)                    |
-| **Reuses existing HTML**         | Yes — drop-in replacement                 | No — parallel renderer                           |
-| **Typography quality**           | Good (browser-grade)                      | Excellent (proper typesetter)                    |
+| Dimension                      | A: WeasyPrint (Docker)                 | B: Typst                            |
+| ------------------------------ | -------------------------------------- | ----------------------------------- |
+| **Dark mode full-bleed**       | `@page { background-color }` — works   | `#set page(fill: black)` — works    |
+| **Consistent margins**         | `@page { margin: 0.75in }` — works     | `#set page(margin: 0.75in)` — works |
+| **Page numbers**               | `@page { @bottom-center { content } }` | `#set page(numbering: "1 / 1")`     |
+| **Rich content**               | Reuse existing HTML+CSS                | New Typst renderer needed           |
+| **Fonts**                      | Existing woff2 base64 (with warnings)  | TTF via `--font-path`               |
+| **Images**                     | Existing base64 data URIs              | Write temp files, reference by path |
+| **Code syntax highlighting**   | None (same as Chrome)                  | Built-in, multi-language            |
+| **Render time (real article)** | ~1.0s (16 pages)                       | ~0.36s (6 pages, subset)            |
+| **PDF size**                   | 2.29 MB (16 pages)                     | 568 KB (6 pages, subset)            |
+| **Dependency**                 | Docker (257 MB image)                  | Single binary (39 MB)               |
+| **Code change**                | ~70 LOC (replace chromedp with exec)   | ~300 LOC (new Typst renderer)       |
+| **Reuses existing HTML**       | Yes — drop-in replacement              | No — parallel renderer              |
+| **Typography quality**         | Good (browser-grade)                   | Excellent (proper typesetter)       |
 
 ## Key Differences
 
@@ -41,11 +41,13 @@ Both WeasyPrint and Typst solve all Chrome limitations. Both produce dark mode w
 ## Decision Framework
 
 Choose **WeasyPrint** if:
+
 - Minimizing code change is the priority
 - Docker is already required (e.g., for V6 web API)
 - Maintaining one rendering pipeline (HTML) is preferred
 
 Choose **Typst** if:
+
 - Output quality matters most
 - Minimizing runtime dependencies matters (no Docker requirement)
 - Syntax highlighting in code blocks is valuable

@@ -51,38 +51,40 @@ Page numbers appear at bottom-center on every page: "1 / 16", "2 / 16", etc. Col
 
 **Good, with minor differences:**
 
-| Aspect | Chrome | WeasyPrint |
-|--------|--------|------------|
-| Text rendering | Excellent | Good — slightly different line breaks |
-| Font weight | Full variable range | Only regular weight (variable font warning) |
-| Images | Identical | Identical (base64 data URIs work) |
-| Code blocks | Gray background | Gray background |
-| Blockquotes | Left border + gray text | Left border + gray text |
-| Page count | 18 pages | 16 pages (tighter layout) |
-| Page breaks | Chrome-decided | WeasyPrint-decided (different split points) |
+| Aspect         | Chrome                  | WeasyPrint                                  |
+| -------------- | ----------------------- | ------------------------------------------- |
+| Text rendering | Excellent               | Good — slightly different line breaks       |
+| Font weight    | Full variable range     | Only regular weight (variable font warning) |
+| Images         | Identical               | Identical (base64 data URIs work)           |
+| Code blocks    | Gray background         | Gray background                             |
+| Blockquotes    | Left border + gray text | Left border + gray text                     |
+| Page count     | 18 pages                | 16 pages (tighter layout)                   |
+| Page breaks    | Chrome-decided          | WeasyPrint-decided (different split points) |
 
 The font-weight warning is fixable: either provide static font files alongside woff2, or use `@font-face` with explicit `font-weight: 400` / `font-weight: 700` instead of `100 900` ranges.
 
 ### A-Q6: Performance?
 
-| Metric | Chrome (chromedp) | WeasyPrint (Docker) |
-|--------|-------------------|---------------------|
-| Render time | ~2-3s | ~1s |
-| Cold start | ~1-2s (browser launch) | ~0.5s (container start) |
-| PDF size | 2.47 MB | 2.29 MB |
-| Dependency | Chrome/Chromium (~500 MB) | Docker image (257 MB) |
+| Metric      | Chrome (chromedp)         | WeasyPrint (Docker)     |
+| ----------- | ------------------------- | ----------------------- |
+| Render time | ~2-3s                     | ~1s                     |
+| Cold start  | ~1-2s (browser launch)    | ~0.5s (container start) |
+| PDF size    | 2.47 MB                   | 2.29 MB                 |
+| Dependency  | Chrome/Chromium (~500 MB) | Docker image (257 MB)   |
 
 WeasyPrint is faster and produces slightly smaller PDFs.
 
 ## Code Change Estimate
 
 ~50 LOC in `pdf.go`:
+
 - Replace `chromedp` import with `os/exec`
 - Replace `PrintToPDF()` body with `docker run` exec
 - Pipe HTML via stdin or mount as volume
 - Read PDF bytes from stdout or mounted volume
 
 ~20 LOC in `html.go`:
+
 - Add `@page` CSS block with background-color, margins, page numbers
 - Fix `font-weight` in `@font-face` (explicit 400/700 instead of range)
 - Remove `@media print` body padding (handled by `@page margin`)

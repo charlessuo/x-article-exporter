@@ -2,7 +2,7 @@
 
 ## Context
 
-Go CLI tool with a linear pipeline: load config → extract article from X → (optionally) translate via Ollama → render to PDF via Typst → validate PDF → write to disk. The user interacts entirely through the terminal (CLI args in, progress/errors/output path out).
+Go CLI tool with a linear pipeline: load config → extract article from X → (optionally) translate via Ollama → render to PDF via Typst → validate PDF → write to disk. The user interacts through the terminal (CLI mode) or HTTP API (server mode with `--serve`). In server mode, an HTTP API accepts export requests and serves PDFs asynchronously.
 
 ---
 
@@ -16,6 +16,7 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | P4  | DeepL API  | External: `api-free.deepl.com/v2/translate`                                                              |
 | P5  | Typst      | External: `typst compile` binary for PDF rendering                                                       |
 | P6  | Filesystem | Config file (`~/.config/x-article-exporter/config.yaml`), query ID cache, output PDF                     |
+| P7  | HTTP API   | Server mode: routes, auth middleware, rate limiter, job manager                                          |
 
 ---
 
@@ -28,6 +29,7 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | U3  | P1    | Validation warnings (word count ±15%, translation length ±30%) — exit 0                                                                              | render  | —         | —          |
 | U4  | P1    | Error messages (auth failure, article not found, validation hard fail) — exit 1                                                                      | render  | —         | —          |
 | U5  | P1    | Success message + output file path — exit 0                                                                                                          | render  | —         | —          |
+| U6  | P7    | HTTP API endpoints: POST /export, GET /export/{id}, GET /export/{id}/pdf                                                                             | invoke  | → N17     | —          |
 
 ---
 
@@ -51,6 +53,12 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | N14 | P3    | —         | `GET /graphql/{queryId}/TweetResultByRestId` — `authorization: Bearer {token}`, `x-csrf-token: {ct0}`, `cookie: auth_token={auth_token}; ct0={ct0}`                                                                                                                | call    | —                 | → N5                                   |
 | N15 | P4    | —         | `POST /v2/translate` — `text`, `target_lang`, `tag_handling: xml`, `ignore_tags: code,latex`                                                                                                                                                                       | call    | —                 | → N8                                   |
 | N16 | P5    | —         | `typst compile` — Typst CLI binary renders .typ source to PDF                                                                                                                                                                                                      | call    | —                 | → N11                                  |
+| N17 | P7    | api       | `Server.Handler()` — Go 1.22+ ServeMux with auth + rate limit middleware                                                                                                                                                                                           | call    | → N18, N19, N20   | —                                      |
+| N18 | P7    | api       | `handleExport()` — validate URL via N2, submit to manager, return 202 + job ID                                                                                                                                                                                     | call    | → N21             | → U6                                   |
+| N19 | P7    | api       | `handleExportStatus()` — return job status + metadata as JSON                                                                                                                                                                                                      | call    | reads S4          | → U6                                   |
+| N20 | P7    | api       | `handleExportPDF()` — return PDF bytes with Content-Disposition header                                                                                                                                                                                             | call    | reads S4          | → U6                                   |
+| N21 | P2    | jobs      | `Manager.Submit()` — acquire semaphore, run pipeline in goroutine, store result                                                                                                                                                                                    | call    | → N22             | → S4                                   |
+| N22 | P2    | pipeline  | `pipeline.Run(ctx, opts)` — reusable pipeline: extract → translate → render → validate                                                                                                                                                                             | call    | → N2, N3, N5–N12  | → N21, → N13 (CLI)                     |
 
 ---
 
@@ -61,6 +69,7 @@ Go CLI tool with a linear pipeline: load config → extract article from X → (
 | S1  | P2    | `config`       | Merged configuration: `auth_token`, `ct0`, `output_dir`, `translate_lang`, `deepl_key`, `query_id` (CLI flags override config file)                                                                |
 | S2  | P6    | `queryIDCache` | Cached query ID + extraction timestamp, 24h TTL. File: `~/.cache/x-article-exporter/query-id.json`                                                                                                 |
 | S3  | P2    | `article`      | In-memory article model: title, author, date, blocks (`[]Block` with text, type, inline styles, entities), images (base64-encoded). Mutated through pipeline: parse → download images → translate. |
+| S4  | P2    | `jobStorage`   | In-memory map of export jobs (keyed by hex ID) with TTL cleanup based on `UpdatedAt`. Stores job status, pipeline result, and PDF bytes.                                                           |
 
 ---
 
@@ -106,6 +115,18 @@ flowchart TB
         end
 
         N13["N13: writePDF()"]
+
+        N22["N22: pipeline.Run()"]
+    end
+
+    subgraph P7["P7: HTTP API"]
+        U6["U6: HTTP API endpoints"]
+        N17["N17: Server.Handler()"]
+        N18["N18: handleExport()"]
+        N19["N19: handleExportStatus()"]
+        N20["N20: handleExportPDF()"]
+        N21["N21: Manager.Submit()"]
+        S4["S4: jobStorage"]
     end
 
     S2["S2: queryIDCache"]
@@ -179,16 +200,28 @@ flowchart TB
     N11 -.-> U2
     N12 -.-> U2
 
+    %% V6 flow (server mode)
+    U6 --> N17
+    N17 --> N18
+    N17 --> N19
+    N17 --> N20
+    N18 --> N21
+    N21 --> N22
+    N22 --> N2
+    N21 --> S4
+    S4 -.-> N19
+    S4 -.-> N20
+
     %% Styling
     classDef ui fill:#ffb6c1,stroke:#d87093,color:#000
     classDef nonui fill:#d3d3d3,stroke:#808080,color:#000
     classDef store fill:#e6e6fa,stroke:#9370db,color:#000
     classDef external fill:#b3e5fc,stroke:#0288d1,color:#000
 
-    class U1,U2,U3,U4,U5 ui
-    class N1,N2,N3,N4,N5,N6,N7,N8,N9,N10,N11,N12,N13 nonui
+    class U1,U2,U3,U4,U5,U6 ui
+    class N1,N2,N3,N4,N5,N6,N7,N8,N9,N10,N11,N12,N13,N17,N18,N19,N20,N21,N22 nonui
     class N14,N15,N16 external
-    class S1,S2,S3 store
+    class S1,S2,S3,S4 store
 ```
 
 **Legend:**
