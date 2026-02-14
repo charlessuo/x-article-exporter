@@ -16,6 +16,7 @@ import (
 	"github.com/annismckenzie/x-article-exporter/internal/api"
 	"github.com/annismckenzie/x-article-exporter/internal/config"
 	"github.com/annismckenzie/x-article-exporter/internal/jobs"
+	mcpsrv "github.com/annismckenzie/x-article-exporter/internal/mcp"
 	"github.com/annismckenzie/x-article-exporter/internal/pipeline"
 )
 
@@ -23,10 +24,17 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix("")
 
-	// Check for --serve before normal flag parsing (server mode has no positional URL arg).
+	// Check for --serve/--mcp before normal flag parsing (these modes have no positional URL arg).
 	for _, arg := range os.Args[1:] {
 		if arg == "--serve" {
 			if err := runServer(); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+		if arg == "--mcp" {
+			if err := runMCP(); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %s\n", err)
 				os.Exit(1)
 			}
@@ -159,6 +167,20 @@ func runServer() error {
 
 	log.Println("Server stopped.")
 	return nil
+}
+
+func runMCP() error {
+	cfg, err := config.LoadMCPConfig()
+	if err != nil {
+		return err
+	}
+
+	if cfg.AuthToken == "" || cfg.CT0 == "" {
+		return errors.New("MCP mode requires auth_token and ct0 in config file")
+	}
+
+	srv := mcpsrv.NewServer(cfg, nil)
+	return srv.ServeStdio()
 }
 
 func formatValidation(r *pipeline.Result) string {
