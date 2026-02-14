@@ -171,18 +171,18 @@ See [spike-a5-thread-extraction.md](./spike-a5-thread-extraction.md).
 
 | Req | Requirement                                                                                   | Status    | A (current, V1–V6, V8) | +A5 (threads) |
 | --- | --------------------------------------------------------------------------------------------- | --------- | :--------------------: | :-----------: |
-| R0  | Produce a readable, well-formatted PDF from an X article URL                                  | Core goal |         ✅         |      ✅       |
-| R1  | Extract full article content from X (text, images, author, date)                              | Must-have |         ✅         |      ✅       |
-| R2  | Translate article text to a target language before PDF generation                             | Must-have |         ✅         |      ✅       |
-| R3  | PDF is shareable with people who have no X account (self-contained)                           | Must-have |         ✅         |      ✅       |
-| R4  | Automated quality validation — can judge PDF correctness without manual inspection            | Must-have |         ✅         |      ✅       |
-| R5  | Handle X authentication via config file with CLI flag override (`auth_token` + `ct0` cookies) | Must-have |         ✅         |      ✅       |
-| R6  | Translation is opt-in per export via explicit `--translate <lang>` CLI flag                   | Must-have |         ✅         |      ✅       |
-| R7  | Export tweet threads as PDF with the same quality and shareability as articles                | Must-have |         ❌         |      ❌       |
-| R8  | Thread structure is visually clear in the PDF (each tweet identifiable, chronological order)  | Must-have |         ❌         |      ❌       |
-| R9  | HTTP API interface — POST a URL, receive a PDF                                                | Must-have |         ✅         |      ✅       |
-| R10 | API authentication via API keys (not X cookies — those are server-side)                       | Must-have |         ✅         |      ✅       |
-| R11 | Translation and thread export work through the API, not just CLI                              | Must-have |         ❌         |      ❌       |
+| R0  | Produce a readable, well-formatted PDF from an X article URL                                  | Core goal |           ✅           |      ✅       |
+| R1  | Extract full article content from X (text, images, author, date)                              | Must-have |           ✅           |      ✅       |
+| R2  | Translate article text to a target language before PDF generation                             | Must-have |           ✅           |      ✅       |
+| R3  | PDF is shareable with people who have no X account (self-contained)                           | Must-have |           ✅           |      ✅       |
+| R4  | Automated quality validation — can judge PDF correctness without manual inspection            | Must-have |           ✅           |      ✅       |
+| R5  | Handle X authentication via config file with CLI flag override (`auth_token` + `ct0` cookies) | Must-have |           ✅           |      ✅       |
+| R6  | Translation is opt-in per export via explicit `--translate <lang>` CLI flag                   | Must-have |           ✅           |      ✅       |
+| R7  | Export tweet threads as PDF with the same quality and shareability as articles                | Must-have |           ❌           |      ❌       |
+| R8  | Thread structure is visually clear in the PDF (each tweet identifiable, chronological order)  | Must-have |           ❌           |      ❌       |
+| R9  | HTTP API interface — POST a URL, receive a PDF                                                | Must-have |           ✅           |      ✅       |
+| R10 | API authentication via API keys (not X cookies — those are server-side)                       | Must-have |           ✅           |      ✅       |
+| R11 | Translation and thread export work through the API, not just CLI                              | Must-have |           ❌           |      ❌       |
 
 **Notes:**
 
@@ -215,15 +215,15 @@ See [breadboard.md](./breadboard.md).
 
 See [slices.md](./slices.md).
 
-| #   | Slice              | Mechanism      | Demo                                           |
-| --- | ------------------ | -------------- | ---------------------------------------------- |
-| V1  | Extract article    | A1             | "Run command, see article summary in terminal" |
-| V2  | Render PDF         | A3             | "Run command, get a well-formatted PDF"        |
-| V3  | Translation        | A2             | "Run with --translate de, get German PDF"      |
-| V4  | Quality validation | A4             | "Run command, see validation pass/warnings"    |
-| V5  | Config + query ID  | R5, A1 partial | "Config file works, query ID auto-resolves"    |
-| V6  | Web API            | A6             | "POST URL to API, get PDF back"                |
-| V7  | Thread export      | A5             | "Pass thread URL, get thread PDF"              |
-| V8  | MCP server         | A8             | "`claude mcp add`, export articles from Claude"|
-| V9  | README + LICENSE   | —              | "Visit repo, instantly understand + use"       |
-| V11 | GitHub Pages site  | Hugo + Hextra  | "Browse docs at annismckenzie.github.io"       |
+| #   | Slice              | Mechanism      | Demo                                            |
+| --- | ------------------ | -------------- | ----------------------------------------------- |
+| V1  | Extract article    | A1             | "Run command, see article summary in terminal"  |
+| V2  | Render PDF         | A3             | "Run command, get a well-formatted PDF"         |
+| V3  | Translation        | A2             | "Run with --translate de, get German PDF"       |
+| V4  | Quality validation | A4             | "Run command, see validation pass/warnings"     |
+| V5  | Config + query ID  | R5, A1 partial | "Config file works, query ID auto-resolves"     |
+| V6  | Web API            | A6             | "POST URL to API, get PDF back"                 |
+| V7  | Thread export      | A5             | "Pass thread URL, get thread PDF"               |
+| V8  | MCP server         | A8             | "`claude mcp add`, export articles from Claude" |
+| V9  | README + LICENSE   | —              | "Visit repo, instantly understand + use"        |
+| V11 | GitHub Pages site  | Hugo + Hextra  | "Browse docs at annismckenzie.github.io"        |

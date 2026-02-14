@@ -2,19 +2,19 @@
 
 ## Slice Summary
 
-| #   | Slice              | Mechanism                            | Demo                                                                 |
-| --- | ------------------ | ------------------------------------ | -------------------------------------------------------------------- |
-| V1  | Extract article    | A1 (content extraction)              | "Run command with URL + auth flags, see article summary in terminal" |
-| V2  | Render PDF         | A3 (PDF rendering)                   | "Run command, get a well-formatted PDF"                              |
-| V2b | Typst renderer     | A3 (chromedp → Typst switch)         | "Same PDF, now rendered via Typst — dark mode, better typography"    |
-| V3  | Translation        | A2 (translation)                     | "Run with `--translate de`, get German PDF"                          |
-| V4  | Quality validation | A4 (quality validation)              | "Run command, see validation pass/warnings before output"            |
-| V5  | Config + query ID  | R5, A1 partial (query ID resolution) | "Config file replaces flags, query ID auto-resolves"                 |
-| V6  | Web API            | A6 (HTTP API server)                 | "POST URL to API, get PDF back"                                      |
-| V7  | Thread export      | A5 (thread extraction + rendering)   | "Pass thread URL, get thread PDF"                                    |
+| #   | Slice              | Mechanism                             | Demo                                                                 |
+| --- | ------------------ | ------------------------------------- | -------------------------------------------------------------------- |
+| V1  | Extract article    | A1 (content extraction)               | "Run command with URL + auth flags, see article summary in terminal" |
+| V2  | Render PDF         | A3 (PDF rendering)                    | "Run command, get a well-formatted PDF"                              |
+| V2b | Typst renderer     | A3 (chromedp → Typst switch)          | "Same PDF, now rendered via Typst — dark mode, better typography"    |
+| V3  | Translation        | A2 (translation)                      | "Run with `--translate de`, get German PDF"                          |
+| V4  | Quality validation | A4 (quality validation)               | "Run command, see validation pass/warnings before output"            |
+| V5  | Config + query ID  | R5, A1 partial (query ID resolution)  | "Config file replaces flags, query ID auto-resolves"                 |
+| V6  | Web API            | A6 (HTTP API server)                  | "POST URL to API, get PDF back"                                      |
+| V7  | Thread export      | A5 (thread extraction + rendering)    | "Pass thread URL, get thread PDF"                                    |
 | V8  | MCP server         | A8 (MCP stdio server for Claude Code) | "`claude mcp add`, ask Claude to export article → PDF on disk"       |
-| V9  | README + LICENSE   | —                                      | "Visit repo, instantly understand what this is + how to use"         |
-| V11 | GitHub Pages site  | Hugo + Hextra                          | "Browse docs at annismckenzie.github.io/x-article-exporter/"        |
+| V9  | README + LICENSE   | —                                     | "Visit repo, instantly understand what this is + how to use"         |
+| V11 | GitHub Pages site  | Hugo + Hextra                         | "Browse docs at annismckenzie.github.io/x-article-exporter/"         |
 
 ---
 
@@ -98,10 +98,10 @@
 
 **New/changed affordances:**
 
-| #   | Place | Component | Affordance                                                                     | Control | Wires Out | Returns To |
-|-----|-------|-----------|--------------------------------------------------------------------------------|---------|-----------|------------|
-| N11 | P2    | render    | `PrintToPDF(ctx, article, darkMode)` — **replaced**: Typst source + `typst compile` instead of chromedp | call | → N16 | → N13 |
-| N16 | P5    | —         | `typst compile` — Typst binary renders .typ to PDF                             | call    | —         | → N11      |
+| #   | Place | Component | Affordance                                                                                              | Control | Wires Out | Returns To |
+| --- | ----- | --------- | ------------------------------------------------------------------------------------------------------- | ------- | --------- | ---------- |
+| N11 | P2    | render    | `PrintToPDF(ctx, article, darkMode)` — **replaced**: Typst source + `typst compile` instead of chromedp | call    | → N16     | → N13      |
+| N16 | P5    | —         | `typst compile` — Typst binary renders .typ to PDF                                                      | call    | —         | → N11      |
 
 **Changed wiring:** N11 no longer calls chromedp. Instead generates Typst source, writes images to temp dir, invokes `typst compile`. Dark mode handled in Typst source (page fill, text color, link/code colors).
 
@@ -424,12 +424,12 @@ flowchart TB
 | :------------------------- | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
 | **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                               | Run command, see article summary in terminal       |
 | **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, chromedp HTML-to-PDF, embedded OpenSans fonts, HTML + PDF output                                                      | Run command, get HTML + PDF                        |
-| **V2b: Typst Renderer**    | ✅ Complete | Replace chromedp with Typst, dark mode (black bg + light text), static font TTFs, Apple Symbols fallback, blockquote left-border styling                | Same PDF, now via Typst — dark mode works fully    |
+| **V2b: Typst Renderer**    | ✅ Complete | Replace chromedp with Typst, dark mode (black bg + light text), static font TTFs, Apple Symbols fallback, blockquote left-border styling               | Same PDF, now via Typst — dark mode works fully    |
 | **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped         | Run with --translate de, get German PDF            |
 | **V4: Quality Validation** | ✅ Complete | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures  | Run command, see validation pass/warnings          |
 | **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |
 | **V6: Web API**            | ✅ Complete | Pipeline extracted to reusable package, Go 1.22+ ServeMux, bounded concurrency, Bearer auth, token-bucket rate limiting, graceful shutdown             | POST URL to API, get PDF back                      |
 | **V7: Thread Export**      | ⏳ Pending  | Detect thread vs article URL, walk self-reply chain, parse tweets into block model, thread-specific HTML template with tweet cards. Spike needed (A5). | Pass thread URL, get thread PDF                    |
-| **V8: MCP Server**         | ✅ Complete | `--mcp` stdio server via mcp-go, 4 tools (export/info/list/check), config-driven auth + output_dir, per-call overrides, `claude mcp add` setup        | Ask Claude to export article → PDF on disk         |
-| **V9: README + LICENSE**   | ✅ Complete | MIT LICENSE, README with badges/screenshots/features/install/config/usage (CLI + API + MCP), hero images in `docs/images/`                             | Visit repo, instantly understand + use              |
-| **V11: GitHub Pages**      | ✅ Complete | Hugo + Hextra docs site in `site/`, 7 content pages, Mermaid diagrams, GitHub Actions deploy, `make site-dev`/`site-build`                             | Browse docs at annismckenzie.github.io              |
+| **V8: MCP Server**         | ✅ Complete | `--mcp` stdio server via mcp-go, 4 tools (export/info/list/check), config-driven auth + output_dir, per-call overrides, `claude mcp add` setup         | Ask Claude to export article → PDF on disk         |
+| **V9: README + LICENSE**   | ✅ Complete | MIT LICENSE, README with badges/screenshots/features/install/config/usage (CLI + API + MCP), hero images in `docs/images/`                             | Visit repo, instantly understand + use             |
+| **V11: GitHub Pages**      | ✅ Complete | Hugo + Hextra docs site in `site/`, 7 content pages, Mermaid diagrams, GitHub Actions deploy, `make site-dev`/`site-build`                             | Browse docs at annismckenzie.github.io             |

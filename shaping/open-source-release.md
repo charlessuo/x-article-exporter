@@ -26,17 +26,17 @@
 
 ## Requirements (R)
 
-| ID  | Requirement                                                                      | Status    |
-|-----|----------------------------------------------------------------------------------|-----------|
-| R0  | All feature branches merged into main with clean, linear history                 | Core goal |
-| R1  | README covers: what it does, installation, usage (CLI + API + MCP), config       | Must-have |
-| R2  | README includes visual examples (screenshots or output samples)                  | Must-have |
-| R3  | Merge order preserves the existing ancestry chain                                | Must-have |
-| R4  | No merge commits — fast-forward merges only for linear history                   | Must-have |
-| R5  | GitHub Pages site with documentation, feature overview, and getting started      | Must-have |
-| R6  | MIT LICENSE file added                                                           | Must-have |
-| R7  | typst-renderer retroactively documented as a slice in shaping docs               | Must-have |
-| R8  | Feature branches deleted after push to GitHub is confirmed                       | Must-have |
+| ID  | Requirement                                                                 | Status    |
+| --- | --------------------------------------------------------------------------- | --------- |
+| R0  | All feature branches merged into main with clean, linear history            | Core goal |
+| R1  | README covers: what it does, installation, usage (CLI + API + MCP), config  | Must-have |
+| R2  | README includes visual examples (screenshots or output samples)             | Must-have |
+| R3  | Merge order preserves the existing ancestry chain                           | Must-have |
+| R4  | No merge commits — fast-forward merges only for linear history              | Must-have |
+| R5  | GitHub Pages site with documentation, feature overview, and getting started | Must-have |
+| R6  | MIT LICENSE file added                                                      | Must-have |
+| R7  | typst-renderer retroactively documented as a slice in shaping docs          | Must-have |
+| R8  | Feature branches deleted after push to GitHub is confirmed                  | Must-have |
 
 ---
 
@@ -56,16 +56,16 @@
 main (13e578b) → v1-extract-article → v2-render-pdf → v3-translate → v5-config-queryid → v4-quality → typst-renderer → v6-web-api → v8-mcp-server
 ```
 
-| Branch            | Commits ahead of main | Incremental commits | Content                                    |
-|:------------------|:---------------------:|:-------------------:|:-------------------------------------------|
-| v1-extract-article | 20                   | 20                  | GraphQL extraction, Draft.js parser, CLI   |
-| v2-render-pdf     | 30                    | 10                  | chromedp PDF renderer, HTML output         |
-| v3-translate      | 37                    | 7                   | Ollama translation, batch processing       |
-| v5-config-queryid | 51                    | 14                  | YAML config, query ID auto-resolution      |
-| v4-quality        | 61                    | 10                  | pdfcpu + text extraction validation        |
-| typst-renderer    | 70                    | 9                   | chromedp → Typst switch, dark mode, fonts  |
-| v6-web-api        | 76                    | 6                   | HTTP API server, job management            |
-| v8-mcp-server     | 82                    | 6                   | MCP stdio server, 4 tools                  |
+| Branch             | Commits ahead of main | Incremental commits | Content                                   |
+| :----------------- | :-------------------: | :-----------------: | :---------------------------------------- |
+| v1-extract-article |          20           |         20          | GraphQL extraction, Draft.js parser, CLI  |
+| v2-render-pdf      |          30           |         10          | chromedp PDF renderer, HTML output        |
+| v3-translate       |          37           |          7          | Ollama translation, batch processing      |
+| v5-config-queryid  |          51           |         14          | YAML config, query ID auto-resolution     |
+| v4-quality         |          61           |         10          | pdfcpu + text extraction validation       |
+| typst-renderer     |          70           |          9          | chromedp → Typst switch, dark mode, fonts |
+| v6-web-api         |          76           |          6          | HTTP API server, job management           |
+| v8-mcp-server      |          82           |          6          | MCP stdio server, 4 tools                 |
 
 **Note:** v5 comes before v4 in the chain (developed in that order despite numbering).
 
@@ -73,11 +73,11 @@ main (13e578b) → v1-extract-article → v2-render-pdf → v3-translate → v5-
 
 ## Slice Summary
 
-| #   | Slice                           | Mechanism                                                | Demo                                                         |
-|-----|---------------------------------|----------------------------------------------------------|--------------------------------------------------------------|
-| V10 | Merge to main                   | Fast-forward merges in ancestry order + retroactive docs | "`git log --oneline main` shows clean 82-commit history"     | ✅ Complete |
-| V9  | README + docs                   | Write README.md, add MIT LICENSE                         | "Visit repo, instantly understand what this is + how to use" | ✅ Complete |
-| V11 | GitHub Pages website            | Static site (TBD generator)                              | "Visit site, see polished docs + feature showcase"           | ⏳ Pending  |
+| #   | Slice                | Mechanism                                                | Demo                                                         |
+| --- | -------------------- | -------------------------------------------------------- | ------------------------------------------------------------ | ----------- |
+| V10 | Merge to main        | Fast-forward merges in ancestry order + retroactive docs | "`git log --oneline main` shows clean 82-commit history"     | ✅ Complete |
+| V9  | README + docs        | Write README.md, add MIT LICENSE                         | "Visit repo, instantly understand what this is + how to use" | ✅ Complete |
+| V11 | GitHub Pages website | Static site (TBD generator)                              | "Visit site, see polished docs + feature showcase"           | ⏳ Pending  |
 
 ---
 
@@ -87,12 +87,12 @@ main (13e578b) → v1-extract-article → v2-render-pdf → v3-translate → v5-
 
 **Parts:**
 
-| Part  | Mechanism                                                                           |
-|-------|-------------------------------------------------------------------------------------|
-| V10a  | Fast-forward merge 8 branches in ancestry order                                     |
-| V10b  | Retroactive slice doc for typst-renderer (V2b in slices.md)                         |
-| V10c  | Push main to GitHub                                                                 |
-| V10d  | Delete all feature branches (local + remote) after confirming push                  |
+| Part | Mechanism                                                          |
+| ---- | ------------------------------------------------------------------ |
+| V10a | Fast-forward merge 8 branches in ancestry order                    |
+| V10b | Retroactive slice doc for typst-renderer (V2b in slices.md)        |
+| V10c | Push main to GitHub                                                |
+| V10d | Delete all feature branches (local + remote) after confirming push |
 
 **V10a merge sequence (all fast-forward):**
 
@@ -120,17 +120,17 @@ After: `main` tip = `v8-mcp-server` tip (c3c5d6e). 82 commits, linear.
 
 **Parts:**
 
-| Part | Mechanism                                                                   |
-|------|-----------------------------------------------------------------------------|
-| V9a  | Add MIT LICENSE file                                                        |
-| V9b  | Hero section: project name, one-line description, badges (Go, license)     |
-| V9c  | Features overview: CLI, translation, dark mode, API, MCP                   |
-| V9d  | Installation: `go install`, prerequisites (Typst, optionally Ollama)       |
-| V9e  | Quick start: minimal usage example                                          |
-| V9f  | Configuration: config file format, auth cookie setup                       |
-| V9g  | Usage sections: CLI flags, API endpoints (link to API.md), MCP setup       |
-| V9h  | Visual examples: screenshots of light/dark PDF output                      |
-| V9i  | Contributing section (minimal) + link to shaping docs                      |
+| Part | Mechanism                                                              |
+| ---- | ---------------------------------------------------------------------- |
+| V9a  | Add MIT LICENSE file                                                   |
+| V9b  | Hero section: project name, one-line description, badges (Go, license) |
+| V9c  | Features overview: CLI, translation, dark mode, API, MCP               |
+| V9d  | Installation: `go install`, prerequisites (Typst, optionally Ollama)   |
+| V9e  | Quick start: minimal usage example                                     |
+| V9f  | Configuration: config file format, auth cookie setup                   |
+| V9g  | Usage sections: CLI flags, API endpoints (link to API.md), MCP setup   |
+| V9h  | Visual examples: screenshots of light/dark PDF output                  |
+| V9i  | Contributing section (minimal) + link to shaping docs                  |
 
 ---
 
@@ -140,27 +140,27 @@ After: `main` tip = `v8-mcp-server` tip (c3c5d6e). 82 commits, linear.
 
 **Known parts (high-level):**
 
-| Part  | Mechanism                                                    |
-|-------|--------------------------------------------------------------|
-| V11a  | Choose static site generator (Hugo, Jekyll, Docusaurus, etc) |
-| V11b  | Feature showcase with screenshots                            |
-| V11c  | Getting started guide                                        |
-| V11d  | API reference                                                |
-| V11e  | MCP integration guide                                        |
-| V11f  | GitHub Actions workflow for Pages deployment                 |
+| Part | Mechanism                                                    |
+| ---- | ------------------------------------------------------------ |
+| V11a | Choose static site generator (Hugo, Jekyll, Docusaurus, etc) |
+| V11b | Feature showcase with screenshots                            |
+| V11c | Getting started guide                                        |
+| V11d | API reference                                                |
+| V11e | MCP integration guide                                        |
+| V11f | GitHub Actions workflow for Pages deployment                 |
 
 ---
 
 ## Fit Check (R × V10 + V9 + V11)
 
-| Req | Requirement                                                                      | Status    | V10 + V9 + V11 |
-|-----|----------------------------------------------------------------------------------|-----------|:---------------:|
-| R0  | All feature branches merged into main with clean, linear history                 | Core goal | ✅              |
-| R1  | README covers: what it does, installation, usage (CLI + API + MCP), config       | Must-have | ✅              |
-| R2  | README includes visual examples (screenshots or output samples)                  | Must-have | ✅              |
-| R3  | Merge order preserves the existing ancestry chain                                | Must-have | ✅              |
-| R4  | No merge commits — fast-forward merges only for linear history                   | Must-have | ✅              |
-| R5  | GitHub Pages site with documentation, feature overview, and getting started      | Must-have | ✅              |
-| R6  | MIT LICENSE file added                                                           | Must-have | ✅              |
-| R7  | typst-renderer retroactively documented as a slice in shaping docs               | Must-have | ✅              |
-| R8  | Feature branches deleted after push to GitHub is confirmed                       | Must-have | ✅              |
+| Req | Requirement                                                                 | Status    | V10 + V9 + V11 |
+| --- | --------------------------------------------------------------------------- | --------- | :------------: |
+| R0  | All feature branches merged into main with clean, linear history            | Core goal |       ✅       |
+| R1  | README covers: what it does, installation, usage (CLI + API + MCP), config  | Must-have |       ✅       |
+| R2  | README includes visual examples (screenshots or output samples)             | Must-have |       ✅       |
+| R3  | Merge order preserves the existing ancestry chain                           | Must-have |       ✅       |
+| R4  | No merge commits — fast-forward merges only for linear history              | Must-have |       ✅       |
+| R5  | GitHub Pages site with documentation, feature overview, and getting started | Must-have |       ✅       |
+| R6  | MIT LICENSE file added                                                      | Must-have |       ✅       |
+| R7  | typst-renderer retroactively documented as a slice in shaping docs          | Must-have |       ✅       |
+| R8  | Feature branches deleted after push to GitHub is confirmed                  | Must-have |       ✅       |
