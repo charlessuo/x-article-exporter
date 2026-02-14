@@ -1,7 +1,13 @@
 TEST_URL := https://x.com/demo_author/article/1234567890123456789
 PREVIEW_DIR := /tmp/x-article-preview
 
-.PHONY: test-article preview fmt-docs
+.PHONY: test test-full test-article preview fmt-docs
+
+test:
+	@go test -short ./...
+
+test-full:
+	@go test ./...
 
 test-article:
 	@go run main.go --output test-article $(TEST_URL)
