@@ -24,6 +24,10 @@ type Options struct {
 	QueryID     string
 	OllamaModel string
 	DarkMode    bool
+
+	// OnProgress is called at the start of each pipeline step with a
+	// human-readable message (e.g. "Fetching article..."). Nil means no-op.
+	OnProgress func(message string)
 }
 
 // Result holds everything the caller needs after a successful pipeline run.
@@ -43,6 +47,11 @@ type Result struct {
 // Run executes the full article export pipeline: fetch, translate, render, validate.
 // It returns a Result with PDF bytes and metadata, or an error.
 func Run(ctx context.Context, opts Options) (*Result, error) {
+	progress := opts.OnProgress
+	if progress == nil {
+		progress = func(string) {}
+	}
+
 	articleID, err := extract.ExtractArticleID(opts.URL)
 	if err != nil {
 		return nil, err
@@ -53,6 +62,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		return nil, err
 	}
 
+	progress("Fetching article...")
 	log.Println("Fetching article...")
 	cfg := &config.Config{AuthToken: opts.AuthToken, CT0: opts.CT0}
 	body, err := extract.FetchArticle(ctx, articleID, queryID, cfg)
@@ -70,6 +80,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 	}
 
 	if opts.TranslateTo != "" {
+		progress("Translating to " + opts.TranslateTo + "...")
 		client := translate.NewClient("", opts.OllamaModel)
 		if err := client.Ping(ctx); err != nil {
 			return nil, err
@@ -80,11 +91,13 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		}
 	}
 
+	progress("Downloading images...")
 	log.Println("Downloading images...")
 	if err := images.DownloadImages(ctx, article); err != nil {
 		return nil, err
 	}
 
+	progress("Rendering PDF...")
 	log.Println("Rendering HTML...")
 	htmlContent := render.RenderHTML(article)
 
@@ -94,6 +107,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		return nil, err
 	}
 
+	progress("Validating PDF...")
 	log.Println("Validating PDF...")
 	valResult, err := validate.ValidatePDF(pdfBytes, article)
 	if err != nil {

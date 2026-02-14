@@ -13,6 +13,7 @@ import (
 	"github.com/annismckenzie/x-article-exporter/internal/pipeline"
 	"github.com/annismckenzie/x-article-exporter/internal/translate"
 	mcplib "github.com/mark3labs/mcp-go/mcp"
+	mcpserver "github.com/mark3labs/mcp-go/server"
 )
 
 func (s *Server) handleExportArticle(ctx context.Context, request mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
@@ -30,6 +31,18 @@ func (s *Server) handleExportArticle(ctx context.Context, request mcplib.CallToo
 	customOutput := request.GetString("output", "")
 	darkMode := request.GetBool("dark_mode", s.cfg.DarkMode)
 
+	// Set up progress notifications if the client provided a progress token.
+	var progressToken mcplib.ProgressToken
+	if request.Params.Meta != nil {
+		progressToken = request.Params.Meta.ProgressToken
+	}
+	srv := mcpserver.ServerFromContext(ctx)
+	step := 0
+	total := 5 // fetch, images, render, validate, write
+	if translateTo != "" {
+		total = 6 // fetch, translate, images, render, validate, write
+	}
+
 	opts := pipeline.Options{
 		URL:         url,
 		TranslateTo: translateTo,
@@ -37,12 +50,27 @@ func (s *Server) handleExportArticle(ctx context.Context, request mcplib.CallToo
 		CT0:         s.cfg.CT0,
 		OllamaModel: s.cfg.OllamaModel,
 		DarkMode:    darkMode,
+		OnProgress: func(message string) {
+			step++
+			if progressToken == nil || srv == nil {
+				return
+			}
+			_ = srv.SendNotificationToClient(ctx, "notifications/progress", map[string]any{
+				"progressToken": progressToken,
+				"progress":      step,
+				"total":         total,
+				"message":       message,
+			})
+		},
 	}
 
 	result, err := s.runFn(ctx, opts)
 	if err != nil {
 		return mcplib.NewToolResultError(fmt.Sprintf("Export failed: %s", err)), nil
 	}
+
+	// Final progress: writing file to disk.
+	opts.OnProgress("Writing PDF to disk...")
 
 	outputPath := s.resolveOutputPath(customOutput, result.Title)
 

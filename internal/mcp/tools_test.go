@@ -176,6 +176,68 @@ func TestExportArticle_DarkModeOverride(t *testing.T) {
 	}
 }
 
+func TestExportArticle_ProgressCallback(t *testing.T) {
+	dir := t.TempDir()
+	cfg := newTestConfig(dir)
+
+	var progressMessages []string
+	srv := NewServer(cfg, func(_ context.Context, opts pipeline.Options) (*pipeline.Result, error) {
+		// Simulate the pipeline calling OnProgress at each step.
+		if opts.OnProgress != nil {
+			opts.OnProgress("Fetching article...")
+			opts.OnProgress("Downloading images...")
+			opts.OnProgress("Rendering PDF...")
+			opts.OnProgress("Validating PDF...")
+		}
+		return &pipeline.Result{
+			Title:        "Progress Test",
+			PDFBytes:     []byte("pdf"),
+			ValidationOK: true,
+		}, nil
+	})
+
+	// Capture OnProgress calls by wrapping the server's runFn.
+	origRunFn := srv.runFn
+	srv.runFn = func(ctx context.Context, opts pipeline.Options) (*pipeline.Result, error) {
+		orig := opts.OnProgress
+		opts.OnProgress = func(msg string) {
+			progressMessages = append(progressMessages, msg)
+			if orig != nil {
+				orig(msg)
+			}
+		}
+		return origRunFn(ctx, opts)
+	}
+
+	req := makeRequest(map[string]any{
+		"url": "https://x.com/user/article/12345",
+	})
+
+	res, err := srv.handleExportArticle(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("unexpected tool error: %v", res.Content)
+	}
+
+	// Verify pipeline progress messages are forwarded.
+	want := []string{
+		"Fetching article...",
+		"Downloading images...",
+		"Rendering PDF...",
+		"Validating PDF...",
+	}
+	if len(progressMessages) != len(want) {
+		t.Fatalf("got %d progress messages, want %d: %v", len(progressMessages), len(want), progressMessages)
+	}
+	for i, msg := range want {
+		if progressMessages[i] != msg {
+			t.Errorf("progress[%d] = %q, want %q", i, progressMessages[i], msg)
+		}
+	}
+}
+
 func TestExportArticle_PipelineError(t *testing.T) {
 	dir := t.TempDir()
 	cfg := newTestConfig(dir)
