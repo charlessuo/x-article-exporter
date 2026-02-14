@@ -1,9 +1,11 @@
 package validate
 
 import (
+	"context"
 	"testing"
 
 	"github.com/annismckenzie/x-article-exporter/internal/model"
+	"github.com/annismckenzie/x-article-exporter/internal/render"
 )
 
 func TestCountWords(t *testing.T) {
@@ -238,4 +240,44 @@ func TestResultString(t *testing.T) {
 	if got != "PDF valid. 4 pages. 3 images. 1847 words. Warning: word count: 1847 (expected ~1600, 15% off). OK." {
 		t.Errorf("String() with warning = %q", got)
 	}
+}
+
+func TestValidatePDF_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test (requires Chrome)")
+	}
+
+	html := `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<h1>Test Article Title</h1>
+<p>by @testauthor</p>
+<p>This is the body of the test article with several words in it for counting.</p>
+</body></html>`
+
+	ctx := context.Background()
+	pdfBytes, err := render.PrintToPDF(ctx, html)
+	if err != nil {
+		t.Fatalf("PrintToPDF: %v", err)
+	}
+
+	article := &model.Article{
+		Title:  "Test Article Title",
+		Author: "@testauthor",
+		Blocks: []model.Block{
+			{Type: "unstyled", Text: "This is the body of the test article with several words in it for counting."},
+		},
+		EntityMap: map[string]model.Entity{},
+	}
+
+	result, err := ValidatePDF(pdfBytes, article)
+	if err != nil {
+		t.Fatalf("ValidatePDF: %v", err)
+	}
+
+	if !result.OK() {
+		t.Errorf("expected OK, got errors: %v", result.Errors)
+	}
+	if result.PageCount == 0 {
+		t.Error("expected PageCount > 0")
+	}
+	t.Logf("result: %s", result)
 }
