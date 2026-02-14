@@ -1,4 +1,4 @@
-# x-article-exporter
+# X Article Exporter
 
 Export [X (Twitter) articles](https://help.x.com/en/using-x/articles) as high-quality PDFs — with optional translation and dark mode.
 
