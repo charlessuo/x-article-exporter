@@ -12,10 +12,26 @@ import (
 
 // fileConfig represents the YAML config file structure.
 type fileConfig struct {
-	AuthToken   string `yaml:"auth_token"`
-	CT0         string `yaml:"ct0"`
-	OllamaModel string `yaml:"ollama_model"`
-	DarkMode    bool   `yaml:"dark_mode"`
+	AuthToken   string      `yaml:"auth_token"`
+	CT0         string      `yaml:"ct0"`
+	OllamaModel string     `yaml:"ollama_model"`
+	DarkMode    bool        `yaml:"dark_mode"`
+	Server      *serverYAML `yaml:"server"`
+}
+
+type serverYAML struct {
+	Port                    int          `yaml:"port"`
+	Host                    string       `yaml:"host"`
+	JobTTLMinutes           int          `yaml:"job_ttl_minutes"`
+	DefaultRateLimitPerHour int          `yaml:"default_rate_limit_per_hour"`
+	MaxConcurrentJobs       int          `yaml:"max_concurrent_jobs"`
+	APIKeys                 []apiKeyYAML `yaml:"api_keys"`
+}
+
+type apiKeyYAML struct {
+	Key              string `yaml:"key"`
+	Name             string `yaml:"name"`
+	RateLimitPerHour int    `yaml:"rate_limit_per_hour"`
 }
 
 // configDir overrides the config directory in tests. Empty means use default.
