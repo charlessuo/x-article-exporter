@@ -15,5 +15,10 @@ x-article-exporter
 *.pdf
 *.html
 
+# Hugo
+site/public/
+site/resources/
+site/.hugo_build.lock
+
 # OS
 .DS_Store
