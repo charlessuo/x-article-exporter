@@ -17,6 +17,7 @@ type Config struct {
 	Output      string
 	TranslateTo string
 	OllamaModel string
+	DarkMode    bool
 }
 
 // ParseFlags parses CLI arguments into a Config.
@@ -32,6 +33,7 @@ func ParseFlags(args []string) (*Config, error) {
 	fs.StringVar(&cfg.Output, "output", "", "output PDF path (default: ./{title}.pdf)")
 	fs.StringVar(&cfg.TranslateTo, "translate", "", "translate article to target language (e.g., de, fr)")
 	fs.StringVar(&cfg.OllamaModel, "ollama-model", "", "Ollama model for translation (default: translategemma:12b)")
+	fs.BoolVar(&cfg.DarkMode, "dark", false, "render PDF in dark mode")
 
 	if err := fs.Parse(args); err != nil {
 		return nil, err
@@ -63,6 +65,9 @@ func ParseFlags(args []string) (*Config, error) {
 		}
 		if !flagsSet["ollama-model"] && fileCfg.OllamaModel != "" {
 			cfg.OllamaModel = fileCfg.OllamaModel
+		}
+		if !flagsSet["dark"] && fileCfg.DarkMode {
+			cfg.DarkMode = true
 		}
 		log.Println("Loaded config file.")
 	}

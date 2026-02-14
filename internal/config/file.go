@@ -15,6 +15,7 @@ type fileConfig struct {
 	AuthToken   string `yaml:"auth_token"`
 	CT0         string `yaml:"ct0"`
 	OllamaModel string `yaml:"ollama_model"`
+	DarkMode    bool   `yaml:"dark_mode"`
 }
 
 // configDir overrides the config directory in tests. Empty means use default.

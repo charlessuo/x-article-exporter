@@ -269,19 +269,7 @@ func TestResultString(t *testing.T) {
 
 func TestValidatePDF_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test (requires Chrome)")
-	}
-
-	html := `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
-<h1>Test Article Title</h1>
-<p>by @testauthor</p>
-<p>This is the body of the test article with several words in it for counting.</p>
-</body></html>`
-
-	ctx := context.Background()
-	pdfBytes, err := render.PrintToPDF(ctx, html)
-	if err != nil {
-		t.Fatalf("PrintToPDF: %v", err)
+		t.Skip("skipping integration test (requires Typst)")
 	}
 
 	article := &model.Article{
@@ -291,6 +279,12 @@ func TestValidatePDF_Integration(t *testing.T) {
 			{Type: "unstyled", Text: "This is the body of the test article with several words in it for counting."},
 		},
 		EntityMap: map[string]model.Entity{},
+	}
+
+	ctx := context.Background()
+	pdfBytes, err := render.PrintToPDF(ctx, article, false)
+	if err != nil {
+		t.Fatalf("PrintToPDF: %v", err)
 	}
 
 	result, err := ValidatePDF(pdfBytes, article)

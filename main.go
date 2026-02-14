@@ -92,7 +92,7 @@ func run(args []string) error {
 	log.Printf("HTML written to %s", htmlPath)
 
 	log.Println("Generating PDF...")
-	pdfBytes, err := render.PrintToPDF(ctx, htmlContent)
+	pdfBytes, err := render.PrintToPDF(ctx, article, cfg.DarkMode)
 	if err != nil {
 		return err
 	}
