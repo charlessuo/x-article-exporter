@@ -268,10 +268,6 @@ func TestResultString(t *testing.T) {
 }
 
 func TestValidatePDF_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test (requires Typst)")
-	}
-
 	article := &model.Article{
 		Title:  "Test Article Title",
 		Author: "@testauthor",
