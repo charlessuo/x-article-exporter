@@ -86,9 +86,10 @@ graph TD
 x-article-exporter/
   main.go              # CLI + mode dispatch (--serve, --mcp)
   internal/
-    article/           # Article model + Draft.js parser
-    xapi/              # X GraphQL API client
-    typst/             # Typst source generation + PDF compilation
+    extract/           # X GraphQL API client + Draft.js parser
+    model/             # Article model types
+    images/            # Image handling (base64 decode, temp files)
+    render/            # Typst source generation + PDF compilation
     translate/         # Ollama translation client
     validate/          # PDF quality validation
     pipeline/          # Shared pipeline.Run() orchestration
