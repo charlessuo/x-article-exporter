@@ -1,4 +1,3 @@
-TEST_URL := https://x.com/demo_author/article/1234567890123456789
 PREVIEW_DIR := /tmp/x-article-preview
 
 .PHONY: test test-article test-article-dark preview preview-dark serve mcp fmt-docs site-dev site-build
@@ -7,10 +6,10 @@ test:
 	@go test -count=1 ./...
 
 test-article:
-	@go run main.go --output test-article $(TEST_URL)
+	@go run main.go --dark=false --output test-article ${TEST_URL}
 
 test-article-dark:
-	@go run main.go --dark --output test-article-dark $(TEST_URL)
+	@go run main.go --dark --output test-article-dark ${TEST_URL}
 
 preview: test-article
 	@rm -f $(PREVIEW_DIR)/page-*.png
