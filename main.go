@@ -13,6 +13,7 @@ import (
 	"github.com/annismckenzie/x-article-exporter/internal/images"
 	"github.com/annismckenzie/x-article-exporter/internal/render"
 	"github.com/annismckenzie/x-article-exporter/internal/translate"
+	"github.com/annismckenzie/x-article-exporter/internal/validate"
 )
 
 func main() {
@@ -94,6 +95,22 @@ func run(args []string) error {
 	pdfBytes, err := render.PrintToPDF(ctx, htmlContent)
 	if err != nil {
 		return err
+	}
+
+	log.Println("Validating PDF...")
+	valResult, err := validate.ValidatePDF(pdfBytes, article)
+	if err != nil {
+		return fmt.Errorf("PDF validation: %w", err)
+	}
+	log.Print(valResult)
+	for _, w := range valResult.Warnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
+	}
+	if !valResult.OK() {
+		for _, e := range valResult.Errors {
+			fmt.Fprintf(os.Stderr, "validation error: %s\n", e)
+		}
+		return fmt.Errorf("PDF validation failed with %d error(s)", len(valResult.Errors))
 	}
 
 	pdfPath := basePath + ".pdf"
