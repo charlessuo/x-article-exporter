@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -12,6 +14,29 @@ var openSansRegular []byte
 
 //go:embed fonts/OpenSans-Italic.woff2
 var openSansItalic []byte
+
+//go:embed fonts/OpenSans.ttf
+var openSansTTF []byte
+
+//go:embed fonts/OpenSans-Italic.ttf
+var openSansItalicTTF []byte
+
+// writeFontsToDir writes embedded TTF font files to a directory for Typst.
+func writeFontsToDir(dir string) error {
+	fonts := []struct {
+		name string
+		data []byte
+	}{
+		{"OpenSans.ttf", openSansTTF},
+		{"OpenSans-Italic.ttf", openSansItalicTTF},
+	}
+	for _, f := range fonts {
+		if err := os.WriteFile(filepath.Join(dir, f.name), f.data, 0644); err != nil {
+			return fmt.Errorf("writing font %s: %w", f.name, err)
+		}
+	}
+	return nil
+}
 
 // fontFaceCSS returns @font-face declarations with base64-embedded OpenSans.
 func fontFaceCSS() string {

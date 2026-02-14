@@ -2,53 +2,57 @@ package render
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 
-	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/chromedp"
+	"github.com/annismckenzie/x-article-exporter/internal/model"
 )
 
-// PrintToPDF renders an HTML string to PDF bytes using a headless Chrome instance.
-func PrintToPDF(ctx context.Context, htmlContent string) ([]byte, error) {
-	allocCtx, cancel := chromedp.NewExecAllocator(ctx, append(
-		chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.DisableGPU,
-	)...)
-	defer cancel()
+// PrintToPDF renders an article to PDF bytes using Typst.
+func PrintToPDF(ctx context.Context, article *model.Article, darkMode bool) ([]byte, error) {
+	result, err := renderTypst(article, darkMode)
+	if err != nil {
+		return nil, fmt.Errorf("generating typst source: %w", err)
+	}
+	if result.TempDir != "" {
+		defer os.RemoveAll(result.TempDir)
+	}
 
-	taskCtx, cancel := chromedp.NewContext(allocCtx)
-	defer cancel()
-
-	var pdfBuf []byte
-	err := chromedp.Run(taskCtx,
-		chromedp.Navigate("about:blank"),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			frameTree, err := page.GetFrameTree().Do(ctx)
-			if err != nil {
-				return err
-			}
-			return page.SetDocumentContent(frameTree.Frame.ID, htmlContent).Do(ctx)
-		}),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			buf, _, err := page.PrintToPDF().
-				WithPrintBackground(true).
-				WithDisplayHeaderFooter(true).
-				WithHeaderTemplate("<span></span>").
-				WithFooterTemplate(`<div style="font-size:9px;text-align:center;width:100%"><span class="pageNumber"></span> / <span class="totalPages"></span></div>`).
-				WithMarginTop(0.75).
-				WithMarginBottom(0.75).
-				WithMarginLeft(0.75).
-				WithMarginRight(0.75).
-				Do(ctx)
-			if err != nil {
-				return err
-			}
-			pdfBuf = buf
-			return nil
-		}),
-	)
+	// Create a working directory for Typst compilation.
+	workDir, err := os.MkdirTemp("", "typst-compile-*")
 	if err != nil {
 		return nil, err
 	}
+	defer os.RemoveAll(workDir)
 
-	return pdfBuf, nil
+	// Write fonts.
+	fontDir := filepath.Join(workDir, "fonts")
+	if err := os.Mkdir(fontDir, 0755); err != nil {
+		return nil, err
+	}
+	if err := writeFontsToDir(fontDir); err != nil {
+		return nil, err
+	}
+
+	// Write Typst source.
+	typFile := filepath.Join(workDir, "article.typ")
+	if err := os.WriteFile(typFile, []byte(result.Source), 0644); err != nil {
+		return nil, err
+	}
+
+	// Compile to PDF.
+	pdfFile := filepath.Join(workDir, "article.pdf")
+	cmd := exec.CommandContext(ctx, "typst", "compile",
+		"--root", "/",
+		"--font-path", fontDir,
+		typFile, pdfFile,
+	)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("typst compile: %w", err)
+	}
+
+	return os.ReadFile(pdfFile)
 }
