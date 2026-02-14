@@ -14,6 +14,7 @@
 | V7  | Thread export      | A5 (thread extraction + rendering)   | "Pass thread URL, get thread PDF"                                    |
 | V8  | MCP server         | A8 (MCP stdio server for Claude Code) | "`claude mcp add`, ask Claude to export article → PDF on disk"       |
 | V9  | README + LICENSE   | —                                      | "Visit repo, instantly understand what this is + how to use"         |
+| V11 | GitHub Pages site  | Hugo + Hextra                          | "Browse docs at annismckenzie.github.io/x-article-exporter/"        |
 
 ---
 
@@ -431,3 +432,4 @@ flowchart TB
 | **V7: Thread Export**      | ⏳ Pending  | Detect thread vs article URL, walk self-reply chain, parse tweets into block model, thread-specific HTML template with tweet cards. Spike needed (A5). | Pass thread URL, get thread PDF                    |
 | **V8: MCP Server**         | ✅ Complete | `--mcp` stdio server via mcp-go, 4 tools (export/info/list/check), config-driven auth + output_dir, per-call overrides, `claude mcp add` setup        | Ask Claude to export article → PDF on disk         |
 | **V9: README + LICENSE**   | ✅ Complete | MIT LICENSE, README with badges/screenshots/features/install/config/usage (CLI + API + MCP), hero images in `docs/images/`                             | Visit repo, instantly understand + use              |
+| **V11: GitHub Pages**      | ✅ Complete | Hugo + Hextra docs site in `site/`, 7 content pages, Mermaid diagrams, GitHub Actions deploy, `make site-dev`/`site-build`                             | Browse docs at annismckenzie.github.io              |

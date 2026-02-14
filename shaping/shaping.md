@@ -226,3 +226,4 @@ See [slices.md](./slices.md).
 | V7  | Thread export      | A5             | "Pass thread URL, get thread PDF"              |
 | V8  | MCP server         | A8             | "`claude mcp add`, export articles from Claude"|
 | V9  | README + LICENSE   | —              | "Visit repo, instantly understand + use"       |
+| V11 | GitHub Pages site  | Hugo + Hextra  | "Browse docs at annismckenzie.github.io"       |
