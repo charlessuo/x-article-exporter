@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Article holds the parsed article metadata and content.
 type Article struct {
@@ -70,6 +73,23 @@ func (a *Article) ImageCount() int {
 	n := 0
 	for _, e := range a.EntityMap {
 		if e.Type == "IMAGE" || e.Type == "MEDIA" {
+			n++
+		}
+	}
+	return n
+}
+
+// RenderedImageCount returns the number of images that actually appear in the
+// article's content — i.e., atomic blocks that reference IMAGE/MEDIA entities.
+// This may be less than ImageCount() if the entity map contains unreferenced entries.
+func (a *Article) RenderedImageCount() int {
+	n := 0
+	for _, b := range a.Blocks {
+		if b.Type != "atomic" || len(b.EntityRanges) == 0 {
+			continue
+		}
+		key := fmt.Sprintf("%d", b.EntityRanges[0].Key)
+		if e, ok := a.EntityMap[key]; ok && (e.Type == "IMAGE" || e.Type == "MEDIA") {
 			n++
 		}
 	}

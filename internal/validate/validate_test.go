@@ -98,8 +98,12 @@ func TestExpectedImageCount(t *testing.T) {
 			want:    0,
 		},
 		{
-			name: "entity images only",
+			name: "rendered images only",
 			article: &model.Article{
+				Blocks: []model.Block{
+					{Type: "atomic", EntityRanges: []model.EntityRange{{Key: 0}}},
+					{Type: "atomic", EntityRanges: []model.EntityRange{{Key: 1}}},
+				},
 				EntityMap: map[string]model.Entity{
 					"0": {Type: "MEDIA"},
 					"1": {Type: "MEDIA"},
@@ -108,9 +112,12 @@ func TestExpectedImageCount(t *testing.T) {
 			want: 2,
 		},
 		{
-			name: "entity images plus cover",
+			name: "rendered images plus cover",
 			article: &model.Article{
 				CoverImageURL: "data:image/png;base64,abc",
+				Blocks: []model.Block{
+					{Type: "atomic", EntityRanges: []model.EntityRange{{Key: 0}}},
+				},
 				EntityMap: map[string]model.Entity{
 					"0": {Type: "MEDIA"},
 				},
@@ -128,10 +135,28 @@ func TestExpectedImageCount(t *testing.T) {
 		{
 			name: "non-image entities excluded",
 			article: &model.Article{
+				Blocks: []model.Block{
+					{Type: "atomic", EntityRanges: []model.EntityRange{{Key: 0}}},
+					{Type: "atomic", EntityRanges: []model.EntityRange{{Key: 1}}},
+					{Type: "atomic", EntityRanges: []model.EntityRange{{Key: 2}}},
+				},
 				EntityMap: map[string]model.Entity{
 					"0": {Type: "MEDIA"},
 					"1": {Type: "LINK"},
 					"2": {Type: "TWEMOJI"},
+				},
+			},
+			want: 1,
+		},
+		{
+			name: "unreferenced entity map entries not counted",
+			article: &model.Article{
+				Blocks: []model.Block{
+					{Type: "atomic", EntityRanges: []model.EntityRange{{Key: 0}}},
+				},
+				EntityMap: map[string]model.Entity{
+					"0": {Type: "MEDIA"},
+					"1": {Type: "MEDIA"}, // not referenced by any block
 				},
 			},
 			want: 1,

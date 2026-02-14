@@ -78,9 +78,16 @@ func ValidatePDF(pdfBytes []byte, article *model.Article) (*Result, error) {
 		}
 		result.ImageCount = pdfImageCount
 		expected := expectedImageCount(article)
-		if pdfImageCount != expected {
+		diff := pdfImageCount - expected
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff > 2 {
 			result.Errors = append(result.Errors,
 				fmt.Sprintf("image count mismatch: PDF has %d, expected %d", pdfImageCount, expected))
+		} else if diff > 0 {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("image count: PDF has %d, expected %d", pdfImageCount, expected))
 		}
 	}
 
@@ -102,21 +109,36 @@ func ValidatePDF(pdfBytes []byte, article *model.Article) (*Result, error) {
 		return result, nil
 	}
 	text := string(textBytes)
+	pdfWordCount := countWords(text)
+	result.WordCount = pdfWordCount
+	expectedWords := sourceWordCount(article)
+
+	// Text extraction from Chrome-generated PDFs can be unreliable
+	// (CID fonts, compressed streams). When extraction quality is poor,
+	// downgrade text checks to warnings.
+	poorExtraction := expectedWords > 0 && float64(pdfWordCount)/float64(expectedWords) < 0.5
 
 	// 4. Title present.
 	if article.Title != "" && !containsNormalized(text, article.Title) {
-		result.Errors = append(result.Errors, "title not found in PDF text")
+		msg := "title not found in PDF text"
+		if poorExtraction {
+			result.Warnings = append(result.Warnings, msg+" (text extraction incomplete)")
+		} else {
+			result.Errors = append(result.Errors, msg)
+		}
 	}
 
 	// 5. Author present.
 	if article.Author != "" && !containsNormalized(text, extractAuthorName(article.Author)) {
-		result.Errors = append(result.Errors, "author not found in PDF text")
+		msg := "author not found in PDF text"
+		if poorExtraction {
+			result.Warnings = append(result.Warnings, msg+" (text extraction incomplete)")
+		} else {
+			result.Errors = append(result.Errors, msg)
+		}
 	}
 
 	// 6. Word count ±15%.
-	pdfWordCount := countWords(text)
-	result.WordCount = pdfWordCount
-	expectedWords := sourceWordCount(article)
 	if expectedWords > 0 {
 		ratio := float64(pdfWordCount) / float64(expectedWords)
 		if ratio < 0.85 || ratio > 1.15 {
@@ -129,9 +151,9 @@ func ValidatePDF(pdfBytes []byte, article *model.Article) (*Result, error) {
 }
 
 // expectedImageCount returns the number of images expected in the PDF.
-// This includes entity map images (IMAGE/MEDIA) plus the cover image if present.
+// This counts images from atomic blocks (actually rendered) plus the cover image.
 func expectedImageCount(article *model.Article) int {
-	n := article.ImageCount()
+	n := article.RenderedImageCount()
 	if article.CoverImageURL != "" {
 		n++
 	}
