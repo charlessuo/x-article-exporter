@@ -1,10 +1,15 @@
 package validate
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/annismckenzie/x-article-exporter/internal/model"
+	pdf "github.com/ledongthuc/pdf"
+	"github.com/pdfcpu/pdfcpu/pkg/api"
+	pdfcpumodel "github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 )
 
 // Result holds the outcome of PDF validation.
@@ -34,6 +39,93 @@ func (r *Result) String() string {
 		b.WriteString(" OK.")
 	}
 	return b.String()
+}
+
+// ValidatePDF validates a rendered PDF against the source article.
+// It returns a Result with hard errors and soft warnings.
+// A non-nil error return indicates an infrastructure failure (e.g., library crash),
+// not a validation failure.
+func ValidatePDF(pdfBytes []byte, article *model.Article) (*Result, error) {
+	result := &Result{}
+	conf := pdfcpumodel.NewDefaultConfiguration()
+
+	// 1. Structural integrity.
+	if err := api.Validate(bytes.NewReader(pdfBytes), conf); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("PDF structural integrity: %v", err))
+		return result, nil
+	}
+
+	// 2. Page count.
+	pageCount, err := api.PageCount(bytes.NewReader(pdfBytes), conf)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("reading page count: %v", err))
+		return result, nil
+	}
+	result.PageCount = pageCount
+	if pageCount == 0 {
+		result.Errors = append(result.Errors, "PDF has 0 pages")
+		return result, nil
+	}
+
+	// 3. Image count.
+	imagePages, err := api.ExtractImagesRaw(bytes.NewReader(pdfBytes), nil, conf)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("extracting images: %v", err))
+	} else {
+		pdfImageCount := 0
+		for _, pageImages := range imagePages {
+			pdfImageCount += len(pageImages)
+		}
+		result.ImageCount = pdfImageCount
+		expected := expectedImageCount(article)
+		if pdfImageCount != expected {
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("image count mismatch: PDF has %d, expected %d", pdfImageCount, expected))
+		}
+	}
+
+	// 4-6. Text extraction (title, author, word count).
+	pdfReader, err := pdf.NewReader(bytes.NewReader(pdfBytes), int64(len(pdfBytes)))
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("opening PDF for text extraction: %v", err))
+		return result, nil
+	}
+
+	textReader, err := pdfReader.GetPlainText()
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("extracting text: %v", err))
+		return result, nil
+	}
+	textBytes, err := io.ReadAll(textReader)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("reading extracted text: %v", err))
+		return result, nil
+	}
+	text := string(textBytes)
+
+	// 4. Title present.
+	if article.Title != "" && !containsNormalized(text, article.Title) {
+		result.Errors = append(result.Errors, "title not found in PDF text")
+	}
+
+	// 5. Author present.
+	if article.Author != "" && !containsNormalized(text, extractAuthorName(article.Author)) {
+		result.Errors = append(result.Errors, "author not found in PDF text")
+	}
+
+	// 6. Word count ±15%.
+	pdfWordCount := countWords(text)
+	result.WordCount = pdfWordCount
+	expectedWords := sourceWordCount(article)
+	if expectedWords > 0 {
+		ratio := float64(pdfWordCount) / float64(expectedWords)
+		if ratio < 0.85 || ratio > 1.15 {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("word count: %d (expected ~%d, %.0f%% off)", pdfWordCount, expectedWords, (ratio-1)*100))
+		}
+	}
+
+	return result, nil
 }
 
 // expectedImageCount returns the number of images expected in the PDF.
