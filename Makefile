@@ -1,7 +1,7 @@
 TEST_URL := https://x.com/demo_author/article/1234567890123456789
 PREVIEW_DIR := /tmp/x-article-preview
 
-.PHONY: test test-article test-article-dark preview preview-dark serve mcp fmt-docs
+.PHONY: test test-article test-article-dark preview preview-dark serve mcp fmt-docs site-dev site-build
 
 test:
 	@go test -count=1 ./...
@@ -32,3 +32,9 @@ mcp:
 
 fmt-docs:
 	@npx prettier --write "shaping/*.md"
+
+site-dev:
+	@hugo server --source site --buildDrafts --disableFastRender
+
+site-build:
+	@hugo --source site --minify
