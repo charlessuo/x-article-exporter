@@ -151,12 +151,26 @@ See [spike-a5-thread-extraction.md](./spike-a5-thread-extraction.md).
 
 **A6 is resolved** — implemented in V6. Pipeline extracted to reusable `internal/pipeline.Run()`. Go 1.22+ `ServeMux` patterns (`POST /export`, `GET /export/{id}`, `GET /export/{id}/pdf`). Bounded concurrency via semaphore channel, context propagation for graceful cancellation, token-bucket rate limiting per API key, Bearer token auth middleware. Graceful shutdown with `signal.Notify` + `http.Server.Shutdown`.
 
+### A8: MCP server for Claude Code
+
+**A8a:** MCP stdio server (`--mcp` flag) using `mcp-go` SDK — same binary, stdio JSON-RPC protocol. 4 tools: `export_article`, `get_article_info`, `list_exports`, `check_translation`.
+
+**A8b:** Config-driven auth — reads `auth_token`, `ct0`, `output_dir`, `dark_mode`, `ollama_model` from config file. No API keys needed (Claude Code is the sole client via stdio).
+
+**A8c:** `export_article` tool — validates URL, runs `pipeline.Run()`, writes PDF to configured output dir (or custom path), returns metadata. Supports per-call `translate`, `dark_mode`, `output` overrides.
+
+**A8d:** `get_article_info` tool — fetches and parses article metadata without rendering a PDF. Fast preview before committing to export.
+
+**A8e:** `list_exports` + `check_translation` tools — list PDFs in output dir, verify Ollama availability.
+
+**A8 is resolved** — implemented in V8. Same binary with `--mcp` flag starts stdio MCP server. Reuses `pipeline.Run()` from V6 extraction. Config loaded via `LoadMCPConfig()` with `output_dir` tilde expansion. Registered via `claude mcp add`.
+
 ---
 
 ## Fit Check (R × A)
 
-| Req | Requirement                                                                                   | Status    | A (current, V1–V6) | +A5 (threads) |
-| --- | --------------------------------------------------------------------------------------------- | --------- | :----------------: | :-----------: |
+| Req | Requirement                                                                                   | Status    | A (current, V1–V6, V8) | +A5 (threads) |
+| --- | --------------------------------------------------------------------------------------------- | --------- | :--------------------: | :-----------: |
 | R0  | Produce a readable, well-formatted PDF from an X article URL                                  | Core goal |         ✅         |      ✅       |
 | R1  | Extract full article content from X (text, images, author, date)                              | Must-have |         ✅         |      ✅       |
 | R2  | Translate article text to a target language before PDF generation                             | Must-have |         ✅         |      ✅       |
@@ -176,6 +190,7 @@ See [spike-a5-thread-extraction.md](./spike-a5-thread-extraction.md).
 - R7, R8 fail: A5b–d are flagged unknowns (⚠️). Can't claim ✅ until spike resolves them.
 - R9, R10: Satisfied by V6 (HTTP API server with API key auth).
 - R11 fails: translation works through the API (`"translate": "de"` in POST body), but thread export (A5) isn't implemented yet. Passes once A5 is done.
+- V8 (MCP server) doesn't add new requirements — it's a new interface for the same pipeline, like V6. All R0–R6 tools work through MCP.
 - R0 ✅: A1 (GraphQL extraction → Draft.js blocks) + A3 (Typst article→PDF) form the complete pipeline
 - R1 ✅: `TweetResultByRestId` with `withArticleRichContentState: true` returns full content as Draft.js blocks in `content_state` field (title, body, images, entities)
 - R2 ✅: Local Ollama with translategemma:12b, batch [N] delimiters, plain text translation

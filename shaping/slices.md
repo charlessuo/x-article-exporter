@@ -11,6 +11,7 @@
 | V5  | Config + query ID  | R5, A1 partial (query ID resolution) | "Config file replaces flags, query ID auto-resolves"                 |
 | V6  | Web API            | A6 (HTTP API server)                 | "POST URL to API, get PDF back"                                      |
 | V7  | Thread export      | A5 (thread extraction + rendering)   | "Pass thread URL, get thread PDF"                                    |
+| V8  | MCP server         | A8 (MCP stdio server for Claude Code) | "`claude mcp add`, ask Claude to export article → PDF on disk"       |
 
 ---
 
@@ -193,6 +194,30 @@
 
 ---
 
+## V8: MCP Server
+
+**Demo:** `claude mcp add x-article-exporter /path/to/binary -- --mcp` → registered. Then in Claude Code: "Export this article as PDF: https://x.com/..." → PDF saved to configured output dir.
+
+**Notes:**
+
+- Same binary, `--mcp` flag starts stdio JSON-RPC server (no HTTP)
+- 4 tools: `export_article`, `get_article_info`, `list_exports`, `check_translation`
+- Reuses `pipeline.Run()` from V6 extraction — same pipeline for CLI, HTTP API, and MCP
+- Config via `LoadMCPConfig()`: auth creds + `output_dir` (with `~` expansion) + `dark_mode` + `ollama_model`
+- Per-call overrides: `translate`, `dark_mode`, `output` parameters on `export_article`
+- No API keys needed — Claude Code is the sole client via stdio pipe
+
+**Files:**
+
+- `internal/mcp/server.go` — MCP server init, tool registration, helpers
+- `internal/mcp/tools.go` — 4 tool handlers
+- `internal/mcp/tools_test.go` — 12 tests with mock pipeline
+- `internal/config/mcp.go` — `MCPConfig`, `LoadMCPConfig()`, `expandHome()`
+- `internal/config/mcp_test.go` — 4 config tests
+- `docs/mcp-setup.md` — setup guide with `claude mcp add` instructions
+
+---
+
 ## Sliced Breadboard
 
 ```mermaid
@@ -348,3 +373,4 @@ flowchart TB
 | **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |
 | **V6: Web API**            | ✅ Complete | Pipeline extracted to reusable package, Go 1.22+ ServeMux, bounded concurrency, Bearer auth, token-bucket rate limiting, graceful shutdown             | POST URL to API, get PDF back                      |
 | **V7: Thread Export**      | ⏳ Pending  | Detect thread vs article URL, walk self-reply chain, parse tweets into block model, thread-specific HTML template with tweet cards. Spike needed (A5). | Pass thread URL, get thread PDF                    |
+| **V8: MCP Server**         | ✅ Complete | `--mcp` stdio server via mcp-go, 4 tools (export/info/list/check), config-driven auth + output_dir, per-call overrides, `claude mcp add` setup        | Ask Claude to export article → PDF on disk         |
