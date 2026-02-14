@@ -6,6 +6,7 @@
 | --- | ------------------ | ------------------------------------ | -------------------------------------------------------------------- |
 | V1  | Extract article    | A1 (content extraction)              | "Run command with URL + auth flags, see article summary in terminal" |
 | V2  | Render PDF         | A3 (PDF rendering)                   | "Run command, get a well-formatted PDF"                              |
+| V2b | Typst renderer     | A3 (chromedp → Typst switch)         | "Same PDF, now rendered via Typst — dark mode, better typography"    |
 | V3  | Translation        | A2 (translation)                     | "Run with `--translate de`, get German PDF"                          |
 | V4  | Quality validation | A4 (quality validation)              | "Run command, see validation pass/warnings before output"            |
 | V5  | Config + query ID  | R5, A1 partial (query ID resolution) | "Config file replaces flags, query ID auto-resolves"                 |
@@ -70,6 +71,37 @@
 | N11 | P2    | render    | `printToPDF(article, darkMode)` — generate Typst source, `typst compile` | call    | → N16     | → N13      |
 | N13 | P6    | output    | `writePDF(pdfBytes, outputPath)`                                         | call    | writes P6 | → U5       |
 | N16 | P5    | —         | `typst compile` — Typst binary renders .typ to PDF                       | call    | —         | → N11      |
+
+---
+
+## V2b: Typst Renderer Switch
+
+**Demo:** `make preview` / `make preview-dark` → PDF output now rendered via Typst instead of chromedp. Dark mode works fully (margins, page numbers, backgrounds). Better typography (hyphenation, smart page breaks).
+
+**Notes:**
+
+- Chrome/chromedp had hard limitations: margin areas always white (killing dark mode), CSS body padding doesn't repeat across pages, page numbers in always-white margin area
+- Dual spikes confirmed both WeasyPrint and Typst solve all Chrome limitations (see `shaping/spike-a-weasyprint.md`, `shaping/spike-b-typst.md`, `shaping/spike-comparison.md`)
+- **Typst chosen:** no Docker dependency, superior typography, faster rendering, smaller PDFs, single static binary
+- Typst source renderer (`internal/render/typst.go`): Article → `.typ` source → `typst compile` → PDF
+- Styled text ported to Typst markup: `*bold*`, `_italic_`, `` `code` ``, `#strike[]`, `#link()[]`
+- Inline markup can't span newlines — close/reopen at `\n` boundaries
+- Images: base64 data URIs decoded to temp dir, referenced by file path in `.typ` source
+- Embedded static Open Sans TTFs (Regular/Bold/Italic/BoldItalic) via `go:embed` — variable fonts produce warnings
+- Apple Symbols font fallback for ❯ glyph
+- Blockquotes use `#block(stroke: (left: 3pt + rgb(...)))` for Chrome-matching left-border look
+- `--dark` flag: `#set page(fill: rgb("#000"))` + `#set text(fill: rgb("#e7e9ea"))`
+- chromedp dependency removed (`go mod tidy`)
+- Implementation plan: see `x-article-exporter-plan-4.md` (project root, adjacent to repo)
+
+**New/changed affordances:**
+
+| #   | Place | Component | Affordance                                                                     | Control | Wires Out | Returns To |
+|-----|-------|-----------|--------------------------------------------------------------------------------|---------|-----------|------------|
+| N11 | P2    | render    | `PrintToPDF(ctx, article, darkMode)` — **replaced**: Typst source + `typst compile` instead of chromedp | call | → N16 | → N13 |
+| N16 | P5    | —         | `typst compile` — Typst binary renders .typ to PDF                             | call    | —         | → N11      |
+
+**Changed wiring:** N11 no longer calls chromedp. Instead generates Typst source, writes images to temp dir, invokes `typst compile`. Dark mode handled in Typst source (page fill, text color, link/code colors).
 
 ---
 
@@ -367,7 +399,8 @@ flowchart TB
 | Slice                      | Status      | Highlights                                                                                                                                             | Demo                                               |
 | :------------------------- | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
 | **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                               | Run command, see article summary in terminal       |
-| **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, Typst source renderer + `typst compile`, embedded OpenSans fonts, dark mode, HTML + PDF output                        | Run command, get HTML + PDF                        |
+| **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, chromedp HTML-to-PDF, embedded OpenSans fonts, HTML + PDF output                                                      | Run command, get HTML + PDF                        |
+| **V2b: Typst Renderer**    | ✅ Complete | Replace chromedp with Typst, dark mode (black bg + light text), static font TTFs, Apple Symbols fallback, blockquote left-border styling                | Same PDF, now via Typst — dark mode works fully    |
 | **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped         | Run with --translate de, get German PDF            |
 | **V4: Quality Validation** | ✅ Complete | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures  | Run command, see validation pass/warnings          |
 | **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |
