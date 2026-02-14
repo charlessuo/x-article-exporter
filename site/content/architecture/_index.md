@@ -90,6 +90,7 @@ x-article-exporter/
     model/             # Article model types
     images/            # Image handling (base64 decode, temp files)
     render/            # Typst source generation + PDF compilation
+      fonts/           # Embedded Open Sans TTFs (go:embed)
     translate/         # Ollama translation client
     validate/          # PDF quality validation
     pipeline/          # Shared pipeline.Run() orchestration
@@ -97,5 +98,4 @@ x-article-exporter/
     api/               # HTTP API server
     jobs/              # Job storage + lifecycle management
     mcp/               # MCP stdio server
-  fonts/               # Embedded Open Sans TTFs
 ```
