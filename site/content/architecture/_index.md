@@ -84,18 +84,18 @@ graph TD
 
 ```
 x-article-exporter/
-  main.go              # CLI + mode dispatch (--serve, --mcp)
+  main.go              # CLI entry point, dispatches to pipeline/server/MCP
   internal/
-    extract/           # X GraphQL API client + Draft.js parser
-    model/             # Article model types
-    images/            # Image handling (base64 decode, temp files)
-    render/            # Typst source generation + PDF compilation
+    api/               # HTTP server with export endpoints, bearer auth, rate limiting
+    config/            # CLI flag parsing, YAML config loading, flag-over-file merge
+    extract/           # TweetResultByRestId GraphQL client, query ID resolution
+    images/            # Downloads article images, converts URLs to base64 data URIs
+    jobs/              # Async job execution, bounded concurrency, TTL cleanup
+    mcp/               # MCP stdio server with 4 tools for Claude integration
+    model/             # Article struct, Draft.js content blocks, entity types
+    pipeline/          # Orchestrates fetch → parse → translate → render → validate
+    render/            # HTML template + Typst source generation, PDF compilation
       fonts/           # Embedded Open Sans TTFs (go:embed)
-    translate/         # Ollama translation client
-    validate/          # PDF quality validation
-    pipeline/          # Shared pipeline.Run() orchestration
-    config/            # Config file loading + flag parsing
-    api/               # HTTP API server
-    jobs/              # Job storage + lifecycle management
-    mcp/               # MCP stdio server
+    translate/         # Ollama batch translation with numbered block delimiters
+    validate/          # PDF checks via pdfcpu + ledongthuc/pdf, graceful degradation
 ```
