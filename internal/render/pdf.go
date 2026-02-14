@@ -34,10 +34,10 @@ func PrintToPDF(ctx context.Context, htmlContent string) ([]byte, error) {
 				WithDisplayHeaderFooter(true).
 				WithHeaderTemplate("<span></span>").
 				WithFooterTemplate(`<div style="font-size:9px;text-align:center;width:100%"><span class="pageNumber"></span> / <span class="totalPages"></span></div>`).
-				WithMarginTop(0.5).
+				WithMarginTop(0.75).
 				WithMarginBottom(0.75).
-				WithMarginLeft(0.5).
-				WithMarginRight(0.5).
+				WithMarginLeft(0.75).
+				WithMarginRight(0.75).
 				Do(ctx)
 			if err != nil {
 				return err
