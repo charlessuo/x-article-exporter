@@ -224,3 +224,5 @@ See [slices.md](./slices.md).
 | V5  | Config + query ID  | R5, A1 partial | "Config file works, query ID auto-resolves"    |
 | V6  | Web API            | A6             | "POST URL to API, get PDF back"                |
 | V7  | Thread export      | A5             | "Pass thread URL, get thread PDF"              |
+| V8  | MCP server         | A8             | "`claude mcp add`, export articles from Claude"|
+| V9  | README + LICENSE   | —              | "Visit repo, instantly understand + use"       |

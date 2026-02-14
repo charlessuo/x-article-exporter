@@ -13,6 +13,7 @@
 | V6  | Web API            | A6 (HTTP API server)                 | "POST URL to API, get PDF back"                                      |
 | V7  | Thread export      | A5 (thread extraction + rendering)   | "Pass thread URL, get thread PDF"                                    |
 | V8  | MCP server         | A8 (MCP stdio server for Claude Code) | "`claude mcp add`, ask Claude to export article → PDF on disk"       |
+| V9  | README + LICENSE   | —                                      | "Visit repo, instantly understand what this is + how to use"         |
 
 ---
 
@@ -250,6 +251,28 @@
 
 ---
 
+## V9: README + LICENSE
+
+**Demo:** Visit the GitHub repo → immediately understand what the tool does, how to install it, and how to use all three modes (CLI, API, MCP). Side-by-side light/dark screenshots show output quality.
+
+**Notes:**
+
+- MIT LICENSE with copyright holder `annismckenzie`
+- Hero screenshots copied from `shaping/spike-typst-output/` to `docs/images/` (originals kept as spike artifacts)
+- README structure: badges → screenshots → features → prerequisites → installation → quick start → config → usage (CLI, API, MCP) → how it works → contributing → license
+- Config example shown inline (essential for getting started); API and MCP docs linked, not duplicated
+- Auth cookie setup instructions included (biggest onboarding hurdle)
+- Shields.io badges for Go version and license
+
+**Files:**
+
+- `LICENSE` — MIT license
+- `README.md` — full project documentation
+- `docs/images/example-light.png` — light mode hero screenshot
+- `docs/images/example-dark.png` — dark mode hero screenshot
+
+---
+
 ## Sliced Breadboard
 
 ```mermaid
@@ -407,3 +430,4 @@ flowchart TB
 | **V6: Web API**            | ✅ Complete | Pipeline extracted to reusable package, Go 1.22+ ServeMux, bounded concurrency, Bearer auth, token-bucket rate limiting, graceful shutdown             | POST URL to API, get PDF back                      |
 | **V7: Thread Export**      | ⏳ Pending  | Detect thread vs article URL, walk self-reply chain, parse tweets into block model, thread-specific HTML template with tweet cards. Spike needed (A5). | Pass thread URL, get thread PDF                    |
 | **V8: MCP Server**         | ✅ Complete | `--mcp` stdio server via mcp-go, 4 tools (export/info/list/check), config-driven auth + output_dir, per-call overrides, `claude mcp add` setup        | Ask Claude to export article → PDF on disk         |
+| **V9: README + LICENSE**   | ✅ Complete | MIT LICENSE, README with badges/screenshots/features/install/config/usage (CLI + API + MCP), hero images in `docs/images/`                             | Visit repo, instantly understand + use              |

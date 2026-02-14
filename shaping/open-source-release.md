@@ -75,9 +75,9 @@ main (13e578b) → v1-extract-article → v2-render-pdf → v3-translate → v5-
 
 | #   | Slice                           | Mechanism                                                | Demo                                                         |
 |-----|---------------------------------|----------------------------------------------------------|--------------------------------------------------------------|
-| V10 | Merge to main                   | Fast-forward merges in ancestry order + retroactive docs | "`git log --oneline main` shows clean 82-commit history"     |
-| V9  | README + docs                   | Write README.md, add MIT LICENSE                         | "Visit repo, instantly understand what this is + how to use" |
-| V11 | GitHub Pages website            | Static site (TBD generator)                              | "Visit site, see polished docs + feature showcase"           |
+| V10 | Merge to main                   | Fast-forward merges in ancestry order + retroactive docs | "`git log --oneline main` shows clean 82-commit history"     | ✅ Complete |
+| V9  | README + docs                   | Write README.md, add MIT LICENSE                         | "Visit repo, instantly understand what this is + how to use" | ✅ Complete |
+| V11 | GitHub Pages website            | Static site (TBD generator)                              | "Visit site, see polished docs + feature showcase"           | ⏳ Pending  |
 
 ---
 
