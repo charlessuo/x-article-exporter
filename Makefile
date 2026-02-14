@@ -1,7 +1,7 @@
 TEST_URL := https://x.com/demo_author/article/1234567890123456789
 PREVIEW_DIR := /tmp/x-article-preview
 
-.PHONY: test test-article test-article-dark preview preview-dark fmt-docs
+.PHONY: test test-article test-article-dark preview preview-dark serve fmt-docs
 
 test:
 	@go test -count=1 ./...
@@ -23,6 +23,9 @@ preview-dark: test-article-dark
 	@mkdir -p $(PREVIEW_DIR)
 	@magick -density 150 test-article-dark.pdf -quality 90 $(PREVIEW_DIR)/dark-page-%d.png
 	@echo "Preview: $(PREVIEW_DIR)/dark-page-*.png ($$(ls $(PREVIEW_DIR)/dark-page-*.png 2>/dev/null | wc -l | tr -d ' ') pages)"
+
+serve:
+	@go run main.go --serve
 
 fmt-docs:
 	@npx prettier --write "shaping/*.md"

@@ -2,19 +2,37 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
+	"time"
 
+	"github.com/annismckenzie/x-article-exporter/internal/api"
 	"github.com/annismckenzie/x-article-exporter/internal/config"
+	"github.com/annismckenzie/x-article-exporter/internal/jobs"
 	"github.com/annismckenzie/x-article-exporter/internal/pipeline"
 )
 
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("")
+
+	// Check for --serve before normal flag parsing (server mode has no positional URL arg).
+	for _, arg := range os.Args[1:] {
+		if arg == "--serve" {
+			if err := runServer(); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+	}
 
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
@@ -73,6 +91,73 @@ func run(args []string) error {
 	}
 
 	fmt.Printf("PDF written to %s\n", pdfPath)
+	return nil
+}
+
+func runServer() error {
+	cfg, err := config.LoadServerConfig()
+	if err != nil {
+		return err
+	}
+
+	if cfg.Auth.AuthToken == "" || cfg.Auth.CT0 == "" {
+		return errors.New("server mode requires auth_token and ct0 in config file")
+	}
+	if len(cfg.APIKeys) == 0 {
+		return errors.New("server mode requires at least one API key in config file")
+	}
+
+	storage := jobs.NewStorage(time.Duration(cfg.JobTTLMinutes) * time.Minute)
+	defer storage.Close()
+
+	manager := jobs.NewManager(jobs.ManagerConfig{
+		Storage:       storage,
+		MaxConcurrent: cfg.MaxConcurrentJobs,
+		Auth: jobs.AuthConfig{
+			AuthToken:   cfg.Auth.AuthToken,
+			CT0:         cfg.Auth.CT0,
+			OllamaModel: cfg.Auth.OllamaModel,
+		},
+	})
+	defer manager.Shutdown()
+
+	srv := api.NewServer(cfg, manager)
+
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	httpServer := &http.Server{
+		Addr:         addr,
+		Handler:      srv.Handler(),
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+	errCh := make(chan error, 1)
+	go func() {
+		log.Printf("Server listening on %s", addr)
+		errCh <- httpServer.ListenAndServe()
+	}()
+
+	select {
+	case sig := <-sigCh:
+		log.Printf("Received %s, shutting down...", sig)
+	case err := <-errCh:
+		if !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := httpServer.Shutdown(ctx); err != nil {
+		return fmt.Errorf("server shutdown: %w", err)
+	}
+
+	log.Println("Server stopped.")
 	return nil
 }
 
