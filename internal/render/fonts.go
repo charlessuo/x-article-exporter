@@ -15,11 +15,17 @@ var openSansRegular []byte
 //go:embed fonts/OpenSans-Italic.woff2
 var openSansItalic []byte
 
-//go:embed fonts/OpenSans.ttf
-var openSansTTF []byte
+//go:embed fonts/OpenSans-Regular.ttf
+var openSansRegularTTF []byte
+
+//go:embed fonts/OpenSans-Bold.ttf
+var openSansBoldTTF []byte
 
 //go:embed fonts/OpenSans-Italic.ttf
 var openSansItalicTTF []byte
+
+//go:embed fonts/OpenSans-BoldItalic.ttf
+var openSansBoldItalicTTF []byte
 
 // writeFontsToDir writes embedded TTF font files to a directory for Typst.
 func writeFontsToDir(dir string) error {
@@ -27,8 +33,10 @@ func writeFontsToDir(dir string) error {
 		name string
 		data []byte
 	}{
-		{"OpenSans.ttf", openSansTTF},
+		{"OpenSans-Regular.ttf", openSansRegularTTF},
+		{"OpenSans-Bold.ttf", openSansBoldTTF},
 		{"OpenSans-Italic.ttf", openSansItalicTTF},
+		{"OpenSans-BoldItalic.ttf", openSansBoldItalicTTF},
 	}
 	for _, f := range fonts {
 		if err := os.WriteFile(filepath.Join(dir, f.name), f.data, 0644); err != nil {

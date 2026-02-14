@@ -104,6 +104,18 @@ func applyTypstStyles(segment string, styles []string) string {
 		return segment
 	}
 
+	// Typst inline markup (*, _) can't span across line boundaries.
+	// Split on newlines, style each line separately, rejoin with Typst line breaks.
+	if strings.Contains(segment, "\n") {
+		lines := strings.Split(segment, "\n")
+		for i, line := range lines {
+			if line != "" {
+				lines[i] = applyTypstStyles(line, styles)
+			}
+		}
+		return strings.Join(lines, " \\\n")
+	}
+
 	hasBold := false
 	hasItalic := false
 	hasCode := false

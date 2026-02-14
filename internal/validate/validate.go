@@ -113,7 +113,7 @@ func ValidatePDF(pdfBytes []byte, article *model.Article) (*Result, error) {
 	result.WordCount = pdfWordCount
 	expectedWords := sourceWordCount(article)
 
-	// Text extraction from Chrome-generated PDFs can be unreliable
+	// Text extraction from Typst-generated PDFs can be unreliable
 	// (CID fonts, compressed streams). When extraction quality is poor,
 	// downgrade text checks to warnings.
 	poorExtraction := expectedWords > 0 && float64(pdfWordCount)/float64(expectedWords) < 0.5
