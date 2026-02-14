@@ -1,12 +1,9 @@
 TEST_URL := https://x.com/demo_author/article/1234567890123456789
 PREVIEW_DIR := /tmp/x-article-preview
 
-.PHONY: test test-full test-article test-article-dark preview preview-dark fmt-docs
+.PHONY: test test-article test-article-dark preview preview-dark fmt-docs
 
 test:
-	@go test -short ./...
-
-test-full:
 	@go test -count=1 ./...
 
 test-article:
