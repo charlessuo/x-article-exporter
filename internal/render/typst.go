@@ -53,7 +53,7 @@ func writePageSetup(buf *strings.Builder, darkMode bool) {
 
 func writeTextSetup(buf *strings.Builder, darkMode bool) {
 	buf.WriteString("#set text(\n")
-	buf.WriteString("  font: (\"Open Sans\", \"Apple Symbols\"),\n")
+	buf.WriteString("  font: (\"Open Sans\", \"Noto Sans Symbols 2\"),\n")
 	buf.WriteString("  size: 12pt,\n")
 	if darkMode {
 		buf.WriteString("  fill: rgb(\"#e7e9ea\"),\n")
