@@ -48,7 +48,7 @@
 
 **A2: Translation** — Send all translatable blocks as a single XML-tagged document to DeepL API (`/v2/translate`) with `tag_handling: "xml"`. Use `ignore_tags` for code blocks and LaTeX. Thin Go HTTP client (~100 LOC). Free tier: 500K chars/month ≈ 16 articles. Pro: ~$0.75/article.
 
-**A3: PDF rendering** — Generate Typst source from article model, compile to PDF via `typst compile`. Page setup (us-letter, margins, numbering), dark mode support (`--dark` flag / `dark_mode` config), embedded Open Sans fonts (static TTFs via `go:embed`), Apple Symbols fallback for special glyphs. Images decoded from base64 data URIs to temp files. ~500 LOC total (Typst renderer + styled text + PDF compilation). Requires `typst` binary installed.
+**A3: PDF rendering** — Generate Typst source from article model, compile to PDF via `typst compile`. Page setup (us-letter, margins, numbering), dark mode support (`--dark` flag / `dark_mode` config), embedded Open Sans fonts (static TTFs via `go:embed`), Noto Sans Symbols 2 fallback for special glyphs. Images decoded from base64 data URIs to temp files. ~500 LOC total (Typst renderer + styled text + PDF compilation). Requires `typst` binary installed.
 
 **A4: Quality pipeline** — Two-tier validation. Per-export (<200ms): `pdfcpu.ValidateFile()`, page count, image count match, title/author present, word count ±15%. CI: golden metadata snapshots, must-contain phrases, empty page detection. Libraries: `pdfcpu` + `ledongthuc/pdf` (both pure Go).
 

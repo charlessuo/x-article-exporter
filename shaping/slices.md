@@ -58,7 +58,7 @@
 - Block grouping: consecutive list items → `- `/`+ `, code blocks → ` ``` `, blockquotes → `#block(stroke: (left: ...))[]`
 - Boundary-based styled text renderer for Typst markup (`*bold*`, `_italic_`, `` `code` ``, `#strike[]`, `#link()[]`)
 - Newlines within styled segments handled by closing/reopening markup at line boundaries
-- Embedded Open Sans static TTFs (Regular/Bold/Italic/BoldItalic) + Apple Symbols fallback
+- Embedded Open Sans static TTFs (Regular/Bold/Italic/BoldItalic) + Noto Sans Symbols 2 fallback
 - Dark mode via `--dark` flag: `#set page(fill: rgb("#000"))` + `#set text(fill: rgb("#e7e9ea"))`
 - Page numbers "1 / 1" centered at bottom, dark mode margins filled with page color
 - Self-contained HTML always saved alongside PDF (diffable, shareable via Slack)
@@ -90,7 +90,7 @@
 - Inline markup can't span newlines — close/reopen at `\n` boundaries
 - Images: base64 data URIs decoded to temp dir, referenced by file path in `.typ` source
 - Embedded static Open Sans TTFs (Regular/Bold/Italic/BoldItalic) via `go:embed` — variable fonts produce warnings
-- Apple Symbols font fallback for ❯ glyph
+- Noto Sans Symbols 2 font fallback for special glyphs (embedded TTF, OFL v1.1)
 - Blockquotes use `#block(stroke: (left: 3pt + rgb(...)))` for Chrome-matching left-border look
 - `--dark` flag: `#set page(fill: rgb("#000"))` + `#set text(fill: rgb("#e7e9ea"))`
 - chromedp dependency removed (`go mod tidy`)
@@ -424,7 +424,7 @@ flowchart TB
 | :------------------------- | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
 | **V1: Extract Article**    | ✅ Complete | Parse CLI args, extract snowflake ID, fetch via TweetResultByRestId, parse Draft.js content_state blocks                                               | Run command, see article summary in terminal       |
 | **V2: Render PDF**         | ✅ Complete | Download + base64-encode images, chromedp HTML-to-PDF, embedded OpenSans fonts, HTML + PDF output                                                      | Run command, get HTML + PDF                        |
-| **V2b: Typst Renderer**    | ✅ Complete | Replace chromedp with Typst, dark mode (black bg + light text), static font TTFs, Apple Symbols fallback, blockquote left-border styling               | Same PDF, now via Typst — dark mode works fully    |
+| **V2b: Typst Renderer**    | ✅ Complete | Replace chromedp with Typst, dark mode (black bg + light text), static font TTFs, Noto Sans Symbols 2 fallback, blockquote left-border styling         | Same PDF, now via Typst — dark mode works fully    |
 | **V3: Translation**        | ✅ Complete | --translate and --ollama-model flags, local Ollama with translategemma:12b (55 langs), batch 8 blocks with [N] delimiters, code/images skipped         | Run with --translate de, get German PDF            |
 | **V4: Quality Validation** | ✅ Complete | pdfcpu structural integrity + page/image count, ledongthuc/pdf text extraction, title/author present, word count ±15%, soft warnings vs hard failures  | Run command, see validation pass/warnings          |
 | **V5: Config + Query ID**  | ✅ Complete | YAML config file (~/.config/…), CLI flags override via flag.Visit(), query ID: cache (24h) → main.\*.js bundle → flag → hardcoded, helpful auth error  | Config file replaces flags, query ID auto-resolves |
