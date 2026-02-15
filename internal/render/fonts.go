@@ -27,6 +27,9 @@ var openSansItalicTTF []byte
 //go:embed fonts/OpenSans-BoldItalic.ttf
 var openSansBoldItalicTTF []byte
 
+//go:embed fonts/NotoSansSymbols2-Regular.ttf
+var notoSansSymbols2TTF []byte
+
 // writeFontsToDir writes embedded TTF font files to a directory for Typst.
 func writeFontsToDir(dir string) error {
 	fonts := []struct {
@@ -37,6 +40,7 @@ func writeFontsToDir(dir string) error {
 		{"OpenSans-Bold.ttf", openSansBoldTTF},
 		{"OpenSans-Italic.ttf", openSansItalicTTF},
 		{"OpenSans-BoldItalic.ttf", openSansBoldItalicTTF},
+		{"NotoSansSymbols2-Regular.ttf", notoSansSymbols2TTF},
 	}
 	for _, f := range fonts {
 		if err := os.WriteFile(filepath.Join(dir, f.name), f.data, 0644); err != nil {

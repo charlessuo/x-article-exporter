@@ -45,7 +45,7 @@ func TestRenderTypstBasicArticle(t *testing.T) {
 		{"page setup", `#set page(`},
 		{"us-letter", `paper: "us-letter"`},
 		{"page numbering", `numbering: "1 / 1"`},
-		{"font", `font: ("Open Sans", "Apple Symbols")`},
+		{"font", `font: ("Open Sans", "Noto Sans Symbols 2")`},
 		{"title", `#text(size: 24pt, weight: "bold")[Test Article]`},
 		{"author and date", `\@testauthor · June 15, 2024`},
 		{"h2", `== Introduction`},
