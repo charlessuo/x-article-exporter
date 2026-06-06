@@ -1,0 +1,14 @@
+.git
+.gitignore
+*.pdf
+*.html
+test-article*
+out/
+cfg/
+site/
+docs/
+shaping/
+README.md
+API.md
+Dockerfile
+.dockerignore

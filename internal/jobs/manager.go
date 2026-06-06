@@ -33,10 +33,10 @@ type AuthConfig struct {
 
 // ManagerConfig configures the job manager.
 type ManagerConfig struct {
-	Storage        *Storage
-	Auth           AuthConfig
-	MaxConcurrent  int
-	RunFn          RunFunc // optional, defaults to pipeline.Run
+	Storage       *Storage
+	Auth          AuthConfig
+	MaxConcurrent int
+	RunFn         RunFunc // optional, defaults to pipeline.Run
 }
 
 // NewManager creates a Manager with bounded concurrency.
@@ -118,6 +118,21 @@ func (m *Manager) process(id, url, translate string, darkMode bool) {
 		m.storage.Update(id, func(j *Job) {
 			j.Status = StatusFailed
 			j.Error = err.Error()
+			j.UpdatedAt = now
+		})
+		return
+	}
+
+	// The API only exposes a PDF download endpoint, so a missing PDF (Typst
+	// failure) is a failed job even though the pipeline returns no error.
+	if result.PDFError != nil || len(result.PDFBytes) == 0 {
+		m.storage.Update(id, func(j *Job) {
+			j.Status = StatusFailed
+			if result.PDFError != nil {
+				j.Error = result.PDFError.Error()
+			} else {
+				j.Error = "PDF generation failed"
+			}
 			j.UpdatedAt = now
 		})
 		return

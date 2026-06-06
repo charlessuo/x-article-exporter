@@ -68,6 +68,9 @@ func (s *Server) handleExportArticle(ctx context.Context, request mcplib.CallToo
 	if err != nil {
 		return mcplib.NewToolResultError(fmt.Sprintf("Export failed: %s", err)), nil
 	}
+	if result.PDFError != nil || len(result.PDFBytes) == 0 {
+		return mcplib.NewToolResultError(fmt.Sprintf("PDF generation failed: %v", result.PDFError)), nil
+	}
 
 	// Final progress: writing file to disk.
 	opts.OnProgress("Writing PDF to disk...")
