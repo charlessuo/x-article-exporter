@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -69,29 +70,49 @@ func run(args []string) error {
 		return err
 	}
 
-	log.Print(formatValidation(result))
-	for _, w := range result.ValidationWarnings {
-		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
-	}
-	if !result.ValidationOK {
-		for _, e := range result.ValidationErrors {
-			fmt.Fprintf(os.Stderr, "validation error: %s\n", e)
+	// Only report PDF validation when a PDF was actually produced.
+	pdfFailed := result.PDFError != nil || len(result.PDFBytes) == 0
+	if !pdfFailed {
+		log.Print(formatValidation(result))
+		for _, w := range result.ValidationWarnings {
+			fmt.Fprintf(os.Stderr, "warning: %s\n", w)
 		}
-		return fmt.Errorf("PDF validation failed with %d error(s)", len(result.ValidationErrors))
+		if !result.ValidationOK {
+			for _, e := range result.ValidationErrors {
+				fmt.Fprintf(os.Stderr, "validation error: %s\n", e)
+			}
+			return fmt.Errorf("PDF validation failed with %d error(s)", len(result.ValidationErrors))
+		}
 	}
 
-	basePath := cfg.Output
+	basePath := cfg.OutputBasePath()
 	if basePath == "" {
 		basePath = sanitizeFilename(result.Title)
-	} else {
-		basePath = strings.TrimSuffix(basePath, ".pdf")
 	}
 
+	// Create the output directory if it does not exist.
+	if dir := filepath.Dir(basePath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("creating output directory %s: %w", dir, err)
+		}
+	}
+
+	// HTML is always written.
 	htmlPath := basePath + ".html"
 	if err := os.WriteFile(htmlPath, []byte(result.HTML), 0644); err != nil {
 		return fmt.Errorf("writing HTML: %w", err)
 	}
 	log.Printf("HTML written to %s", htmlPath)
+
+	// The PDF is written only when Typst succeeded.
+	if pdfFailed {
+		if result.PDFError != nil {
+			fmt.Fprintf(os.Stderr, "warning: PDF generation failed, HTML written: %s\n", result.PDFError)
+		} else {
+			fmt.Fprintf(os.Stderr, "warning: PDF generation failed, HTML written\n")
+		}
+		return nil
+	}
 
 	pdfPath := basePath + ".pdf"
 	if err := os.WriteFile(pdfPath, result.PDFBytes, 0644); err != nil {

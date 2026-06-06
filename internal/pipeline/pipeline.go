@@ -42,6 +42,11 @@ type Result struct {
 	ValidationOK       bool
 	ValidationWarnings []string
 	ValidationErrors   []string
+
+	// PDFError is set when HTML rendering succeeded but the PDF/Typst step
+	// failed. In that case PDFBytes is nil and the caller should still write
+	// the HTML. It is nil when the PDF was produced successfully.
+	PDFError error
 }
 
 // Run executes the full article export pipeline: fetch, translate, render, validate.
@@ -97,15 +102,28 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		return nil, err
 	}
 
-	progress("Rendering PDF...")
+	progress("Rendering HTML...")
 	log.Println("Rendering HTML...")
 	htmlContent := render.RenderHTML(article)
 
+	// HTML is always kept. The PDF is best-effort: a Typst compile failure
+	// (e.g. malformed markup in the article prose) must not lose the HTML, so
+	// we record the error and continue instead of aborting the whole run.
+	result := &Result{
+		Article: article,
+		HTML:    htmlContent,
+		Title:   article.Title,
+		Author:  article.Author,
+	}
+
+	progress("Generating PDF...")
 	log.Println("Generating PDF...")
 	pdfBytes, err := render.PrintToPDF(ctx, article, opts.DarkMode)
 	if err != nil {
-		return nil, err
+		result.PDFError = err
+		return result, nil
 	}
+	result.PDFBytes = pdfBytes
 
 	progress("Validating PDF...")
 	log.Println("Validating PDF...")
@@ -114,17 +132,12 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("PDF validation: %w", err)
 	}
 
-	return &Result{
-		Article:            article,
-		PDFBytes:           pdfBytes,
-		HTML:               htmlContent,
-		Title:              article.Title,
-		Author:             article.Author,
-		PageCount:          valResult.PageCount,
-		ImageCount:         valResult.ImageCount,
-		WordCount:          valResult.WordCount,
-		ValidationOK:       valResult.OK(),
-		ValidationWarnings: valResult.Warnings,
-		ValidationErrors:   valResult.Errors,
-	}, nil
+	result.PageCount = valResult.PageCount
+	result.ImageCount = valResult.ImageCount
+	result.WordCount = valResult.WordCount
+	result.ValidationOK = valResult.OK()
+	result.ValidationWarnings = valResult.Warnings
+	result.ValidationErrors = valResult.Errors
+
+	return result, nil
 }

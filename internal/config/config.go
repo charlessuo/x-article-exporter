@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strings"
 )
 
 // Config holds the CLI configuration for a single export run.
@@ -15,9 +16,28 @@ type Config struct {
 	CT0         string
 	QueryID     string
 	Output      string
+	OutputDir   string
+	FileName    string
 	TranslateTo string
 	OllamaModel string
 	DarkMode    bool
+}
+
+// OutputBasePath returns the output base path (without extension) for the run.
+// The tool writes "<base>.html" and "<base>.pdf".
+//
+// Precedence:
+//  1. --output-dir + --file-name (when both are set) -> join(dir, name)
+//  2. --output (legacy) -> the value with a trailing ".pdf" stripped
+//  3. "" -> the caller falls back to a sanitized article title
+func (c *Config) OutputBasePath() string {
+	if c.OutputDir != "" && c.FileName != "" {
+		return filepath.Join(c.OutputDir, c.FileName)
+	}
+	if c.Output != "" {
+		return strings.TrimSuffix(c.Output, ".pdf")
+	}
+	return ""
 }
 
 // ParseFlags parses CLI arguments into a Config.
@@ -31,6 +51,8 @@ func ParseFlags(args []string) (*Config, error) {
 	fs.StringVar(&cfg.CT0, "ct0", "", "X ct0 cookie value")
 	fs.StringVar(&cfg.QueryID, "query-id", "", "GraphQL query ID override (optional)")
 	fs.StringVar(&cfg.Output, "output", "", "output PDF path (default: ./{title}.pdf)")
+	fs.StringVar(&cfg.OutputDir, "output-dir", "", "directory to write outputs into (used with --file-name)")
+	fs.StringVar(&cfg.FileName, "file-name", "", "base output filename without extension (used with --output-dir)")
 	fs.StringVar(&cfg.TranslateTo, "translate", "", "translate article to target language (e.g., de, fr)")
 	fs.StringVar(&cfg.OllamaModel, "ollama-model", "", "Ollama model for translation (default: translategemma:12b)")
 	fs.BoolVar(&cfg.DarkMode, "dark", false, "render PDF in dark mode")

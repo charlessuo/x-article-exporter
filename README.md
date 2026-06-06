@@ -47,6 +47,39 @@ cd x-article-exporter
 go build -o x-article-exporter .
 ```
 
+### Docker
+
+A multi-stage `Dockerfile` is included. The runtime image bundles the external
+[Typst](https://typst.app) binary and fonts (DejaVu, Noto, Noto CJK), so no host
+dependencies are required.
+
+```sh
+# Build the image
+docker build -t x-article-exporter:latest .
+
+# Print help
+docker run --rm x-article-exporter:latest --help
+```
+
+Run an export, mounting an output directory and your config (auth) read-only:
+
+```sh
+docker run --rm \
+  -v "$PWD/out:/out" \
+  -v "$PWD/cfg:/root/.config/x-article-exporter:ro" \
+  x-article-exporter:latest \
+  --output-dir /out --file-name test \
+  https://x.com/user/article/1234567890
+# writes /out/test.pdf and /out/test.html  (./out/test.{pdf,html} on the host)
+```
+
+Inside the container (running as `root`):
+
+- Auth config is read from `/root/.config/x-article-exporter/config.yaml`
+  (keys `auth_token` and `ct0`).
+- The GraphQL query-id cache lives at `/root/.cache/x-article-exporter/query-id.json`
+  (mount a volume there to persist it across runs).
+
 ## Quick Start
 
 ### 1. Get auth cookies
@@ -119,8 +152,21 @@ x-article-exporter [flags] <article-url>
 | `-translate` | Translate to target language (e.g. `de`, `fr`, `ja`) |
 | `-dark` | Render PDF in dark mode |
 | `-output` | Output PDF path (default: `./{title}.pdf`) |
+| `--output-dir` | Directory to write outputs into (used with `--file-name`) |
+| `--file-name` | Base output filename **without** extension (used with `--output-dir`) |
 | `-query-id` | GraphQL query ID override (auto-resolved if omitted) |
 | `-ollama-model` | Ollama model for translation (default: `translategemma:12b`) |
+
+The tool always writes two files for an export: `<base>.html` and `<base>.pdf`.
+The output base is resolved with the following precedence:
+
+1. `--output-dir` + `--file-name` (when **both** are set) → `<output-dir>/<file-name>`
+2. `-output` (legacy) → the given path with a trailing `.pdf` stripped
+3. neither set → a sanitized version of the article title in the current directory
+
+The output directory is created automatically if it does not exist. The
+`-output` flag continues to work exactly as before for standalone use; when
+`--output-dir`/`--file-name` are both provided they take precedence over it.
 
 **Examples:**
 
@@ -133,7 +179,25 @@ x-article-exporter -translate de https://x.com/elonmusk/article/1234567890
 
 # Dark mode with custom output path
 x-article-exporter -dark -output ~/Documents/article.pdf https://x.com/elonmusk/article/1234567890
+
+# Explicit output directory + base file name (writes article.html and article.pdf)
+x-article-exporter --output-dir ~/Documents/exports --file-name article https://x.com/elonmusk/article/1234567890
 ```
+
+### Resilient HTML + PDF output
+
+HTML and PDF are decoupled. The HTML file is **always** written. The PDF is
+written only when the Typst compile succeeds. If PDF generation fails (for
+example, when the article prose contains markup that Typst cannot compile), the
+tool prints a warning, keeps the HTML, and **exits 0**:
+
+```
+warning: PDF generation failed, HTML written: typst compile: exit status 1
+HTML written to article.html
+```
+
+The process exits non-zero only when the HTML itself cannot be produced or
+written.
 
 ### HTTP API
 
