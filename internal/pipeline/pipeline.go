@@ -129,7 +129,11 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 	log.Println("Validating PDF...")
 	valResult, err := validate.ValidatePDF(pdfBytes, article)
 	if err != nil {
-		return nil, fmt.Errorf("PDF validation: %w", err)
+		// A validator crash must not lose the HTML either — degrade the same way
+		// a Typst/PDF generation failure does: drop the PDF, keep the HTML.
+		result.PDFError = fmt.Errorf("PDF validation: %w", err)
+		result.PDFBytes = nil
+		return result, nil
 	}
 
 	result.PageCount = valResult.PageCount
