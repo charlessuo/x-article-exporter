@@ -70,20 +70,7 @@ func run(args []string) error {
 		return err
 	}
 
-	// Only report PDF validation when a PDF was actually produced.
 	pdfFailed := result.PDFError != nil || len(result.PDFBytes) == 0
-	if !pdfFailed {
-		log.Print(formatValidation(result))
-		for _, w := range result.ValidationWarnings {
-			fmt.Fprintf(os.Stderr, "warning: %s\n", w)
-		}
-		if !result.ValidationOK {
-			for _, e := range result.ValidationErrors {
-				fmt.Fprintf(os.Stderr, "validation error: %s\n", e)
-			}
-			return fmt.Errorf("PDF validation failed with %d error(s)", len(result.ValidationErrors))
-		}
-	}
 
 	basePath := cfg.OutputBasePath()
 	if basePath == "" {
@@ -97,20 +84,36 @@ func run(args []string) error {
 		}
 	}
 
-	// HTML is always written.
+	// HTML is always written first, before any PDF/validation handling, so that
+	// a PDF problem can never cost us the (good) HTML.
 	htmlPath := basePath + ".html"
 	if err := os.WriteFile(htmlPath, []byte(result.HTML), 0644); err != nil {
 		return fmt.Errorf("writing HTML: %w", err)
 	}
 	log.Printf("HTML written to %s", htmlPath)
 
-	// The PDF is written only when Typst succeeded.
+	// The PDF is best-effort. A generation failure means there is nothing to
+	// write — keep the HTML and stop here.
 	if pdfFailed {
 		if result.PDFError != nil {
 			fmt.Fprintf(os.Stderr, "warning: PDF generation failed, HTML written: %s\n", result.PDFError)
 		} else {
 			fmt.Fprintf(os.Stderr, "warning: PDF generation failed, HTML written\n")
 		}
+		return nil
+	}
+
+	// A PDF was produced — report validation. A failed validation is treated the
+	// same way: keep the HTML, skip the (bad) PDF, and warn rather than abort.
+	log.Print(formatValidation(result))
+	for _, w := range result.ValidationWarnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
+	}
+	if !result.ValidationOK {
+		for _, e := range result.ValidationErrors {
+			fmt.Fprintf(os.Stderr, "validation error: %s\n", e)
+		}
+		fmt.Fprintf(os.Stderr, "warning: PDF failed validation, HTML written but PDF skipped\n")
 		return nil
 	}
 
